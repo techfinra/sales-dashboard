@@ -1219,12 +1219,25 @@ async function loadDBFromFirebase(){
       FB.get('db/pricingOverride'),FB.get('db/pricingExcel'),
       FB.get('db/settings'),FB.get('db/hcAdmin'),FB.get('db/cfAdmin'),
     ]);
-    // Firebase는 배열을 객체로 저장 → 다시 배열로 변환
-    const _toArr=v=>!v?[]:Array.isArray(v)?v:Object.values(v);
-    DB.companies=_toArr(cos);
-    DB.history=_toArr(hist);
+    // Firebase는 배열을 객체로 저장 → 재귀적으로 배열 복원
+    function _fbToArr(v){
+      if(!v) return v;
+      if(Array.isArray(v)) return v.map(_fbToArr);
+      if(typeof v==='object'){
+        // 키가 0,1,2... 인 경우 배열로 변환
+        const keys=Object.keys(v);
+        const isArr=keys.length>0&&keys.every((k,i)=>parseInt(k)===i);
+        if(isArr) return keys.map(k=>_fbToArr(v[k]));
+        const out={};
+        for(const k of keys) out[k]=_fbToArr(v[k]);
+        return out;
+      }
+      return v;
+    }
+    DB.companies=_fbToArr(cos)||[];
+    DB.history=_fbToArr(hist)||[];
     DB.pricingOverride=po||{};
-    DB.pricingExcel=_toArr(px);
+    DB.pricingExcel=_fbToArr(px)||[];
     if(cfg){DB.settings={...DB.settings,...cfg};DB.settings.isAdmin=false;}
     if(hc) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(hc));
     if(cf) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(cf));
@@ -1233,6 +1246,7 @@ async function loadDBFromFirebase(){
     hideLoading();
     migrateHCNames(); migrateStatusNewlines();
     renderAll(); renderCommonRev();
+    updateUploadHistory(); // 업로드 이력 갱신
     // 실시간 리스너: 다른 기기 변경 감지
     let _firstListen=true;
     _db.ref('db/companies').on('value',snap=>{
