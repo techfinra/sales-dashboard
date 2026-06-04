@@ -1265,13 +1265,15 @@ function saveDB(){
     _fbSaving=true;
     const hcVal=(()=>{try{return JSON.parse(localStorage.getItem(HC_ADMIN_KEY)||'null');}catch(e){return null;}})();
     const cfVal=(()=>{try{return JSON.parse(localStorage.getItem(CF_ADMIN_KEY)||'null');}catch(e){return null;}})();
+    // Firebase는 undefined 허용 안함 → JSON 직렬화로 undefined 제거
+    const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
     _db.ref('db').set({
-      companies:DB.companies, history:DB.history,
-      pricingOverride:DB.pricingOverride, pricingExcel:DB.pricingExcel,
-      settings:{theme:DB.settings.theme,lastUpload:DB.settings.lastUpload},
+      companies:_clean(DB.companies), history:_clean(DB.history),
+      pricingOverride:_clean(DB.pricingOverride), pricingExcel:_clean(DB.pricingExcel),
+      settings:{theme:DB.settings.theme,lastUpload:DB.settings.lastUpload||null},
       hcAdmin:hcVal||null, cfAdmin:cfVal||null,
     }).then(()=>{_fbSaving=false;})
-     .catch(e=>{_fbSaving=false;showToast('⚠️ Firebase 저장 실패','warn');});
+     .catch(e=>{_fbSaving=false;console.error('FB save error',e);showToast('⚠️ Firebase 저장 실패','warn');});
   }
 }
 
