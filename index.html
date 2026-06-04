@@ -1219,10 +1219,12 @@ async function loadDBFromFirebase(){
       FB.get('db/pricingOverride'),FB.get('db/pricingExcel'),
       FB.get('db/settings'),FB.get('db/hcAdmin'),FB.get('db/cfAdmin'),
     ]);
-    DB.companies=cos||[];
-    DB.history=hist||[];
+    // Firebase는 배열을 객체로 저장 → 다시 배열로 변환
+    const _toArr=v=>!v?[]:Array.isArray(v)?v:Object.values(v);
+    DB.companies=_toArr(cos);
+    DB.history=_toArr(hist);
     DB.pricingOverride=po||{};
-    DB.pricingExcel=px||[];
+    DB.pricingExcel=_toArr(px);
     if(cfg){DB.settings={...DB.settings,...cfg};DB.settings.isAdmin=false;}
     if(hc) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(hc));
     if(cf) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(cf));
