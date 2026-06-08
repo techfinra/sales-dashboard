@@ -9,22 +9,34 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
-const _fbConfig={
-  apiKey:"AIzaSyCfndFZ4zAabAJMop00-LHAaWzo7bde7K8",
-  authDomain:"sales-dashboard-3cf7b.firebaseapp.com",
-  projectId:"sales-dashboard-3cf7b",
-  databaseURL:"https://sales-dashboard-3cf7b-default-rtdb.firebaseio.com",
-  storageBucket:"sales-dashboard-3cf7b.firebasestorage.app",
-  messagingSenderId:"254434887831",
-  appId:"1:254434887831:web:169cc700bbdc06f84981d2"
-};
-firebase.initializeApp(_fbConfig);
-const _db=firebase.database();
-const FB={
-  get:(p)=>_db.ref(p).get().then(s=>s.val()),
-  set:(p,v)=>_db.ref(p).set(v),
-};
-let _fbSaving=false;
+// Firebase 전역 초기화 — try/catch로 오류 방어
+window._fbSaving = false;
+window._db = null;
+window.FB = null;
+try {
+  const _fbConfig = {
+    apiKey:"AIzaSyCfndFZ4zAabAJMop00-LHAaWzo7bde7K8",
+    authDomain:"sales-dashboard-3cf7b.firebaseapp.com",
+    projectId:"sales-dashboard-3cf7b",
+    databaseURL:"https://sales-dashboard-3cf7b-default-rtdb.firebaseio.com",
+    storageBucket:"sales-dashboard-3cf7b.firebasestorage.app",
+    messagingSenderId:"254434887831",
+    appId:"1:254434887831:web:169cc700bbdc06f84981d2"
+  };
+  if(typeof firebase !== 'undefined'){
+    firebase.initializeApp(_fbConfig);
+    window._db = firebase.database();
+    window.FB = {
+      get: (p) => _db.ref(p).get().then(s => s.val()),
+      set: (p, v) => _db.ref(p).set(v),
+    };
+    console.log('[Firebase] 초기화 완료');
+  } else {
+    console.warn('[Firebase] SDK 로드 실패 — 로컬 모드');
+  }
+} catch(e) {
+  console.error('[Firebase] 초기화 오류:', e.message);
+}
 </script>
 <!-- /Firebase SDK -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -253,7 +265,57 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
 .pricing-ok{color:var(--t0)}
 
 @media(max-width:1400px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.rm-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:900px){.main{padding:14px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.g2,.g3,.g4,.g23,.g32,.rm-grid{grid-template-columns:1fr}}
+.common-rev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){
+  .main{padding:14px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .g2,.g3,.g4,.g23,.g32,.rm-grid{grid-template-columns:1fr}
+  .sv-srow{grid-template-columns:120px 1fr 80px 80px;gap:6px}
+  .sv-grp{grid-template-columns:50px 1fr}
+  .sv-gname{font-size:10px;padding:8px 4px}
+  .modal{padding:20px;width:96vw}
+}
+@media(max-width:600px){
+  .common-rev-grid{grid-template-columns:1fr}
+  /* 네비 */
+  .nav-btn span{display:none}
+  .logo-wrap .logo-sub{display:none}
+  .hdr-right .date-badge{display:none}
+  /* KPI 카드 1열 */
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi-val{font-size:24px !important}
+  .kpi-lbl{font-size:11px !important}
+  /* RM 카드 1열 */
+  .rm-grid{grid-template-columns:1fr}
+  /* 서비스별 진행바 */
+  .sv-srow{grid-template-columns:1fr 60px 70px;gap:4px}
+  .sv-sname{font-size:11px}
+  .sv-bplan-val,.sv-bamt{font-size:11px}
+  /* 공통매출 카드 1열 */
+  .main{padding:10px}
+  /* 섹션 타이틀 */
+  .sec-title{font-size:13px !important}
+  /* 팝업 */
+  .modal{padding:16px;width:98vw;max-height:96vh;border-radius:12px}
+  /* 내비 버튼 */
+  .nav-btn{padding:6px 10px;font-size:12px}
+  /* 파이프라인 */
+  .pipe-lbl{font-size:11px !important;min-width:80px}
+  .pipe-cnt{font-size:13px !important}
+  /* 프로그레스바 */
+  .prog-label{font-size:11px;min-width:90px}
+  .prog-pct{font-size:11px}
+  .prog-amts{font-size:10px;min-width:110px}
+  /* PC 카드 */
+  .pc-grid{grid-template-columns:1fr 1fr;gap:4px}
+  /* RM Summary */
+  #rmSummaryCard{padding:14px 16px}
+}
+@media(max-width:400px){
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .kpi-val{font-size:20px !important}
+  .sv-srow{grid-template-columns:1fr 55px 65px}
+}
 
 .src-badge-wrap select{border:none;background:transparent;cursor:pointer;font-weight:700;font-size:10px;padding:2px 6px;border-radius:12px}
 .src-1-wrap{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3)}
@@ -1216,6 +1278,10 @@ function loadDB(){
 }
 
 async function loadDBFromFirebase(){
+  if(!window.FB || !window._db){
+    console.warn('[Firebase] 사용 불가 — 로컬 데이터 사용');
+    return;
+  }
   try{
     showLoading('Firebase 데이터 로딩 중...');
     const [cos,hist,po,px,cfg,hc,cf]=await Promise.all([
@@ -1251,16 +1317,23 @@ async function loadDBFromFirebase(){
     migrateHCNames(); migrateStatusNewlines();
     renderAll(); renderCommonRev(); renderRMSummary();
     updateUploadHistory(); // 업로드 이력 갱신
-    // 실시간 리스너: 다른 기기 변경 감지
+    // 실시간 리스너: 다른 기기 변경 감지 (db 전체 감지)
     let _firstListen=true;
-    _db.ref('db/companies').on('value',snap=>{
+    _db.ref('db').on('value',snap=>{
       if(_firstListen){_firstListen=false;return;}
       if(_fbSaving) return;
       const d=snap.val();
       if(!d) return;
-      DB.companies=d;
-      localStorage.setItem(KEYS.companies,JSON.stringify(d));
-      renderAll(); renderCommonRev();
+      DB.companies=_fbToArr(d.companies)||[];
+      DB.history=_fbToArr(d.history)||[];
+      DB.pricingOverride=d.pricingOverride||{};
+      DB.pricingExcel=_fbToArr(d.pricingExcel)||[];
+      if(d.hcAdmin) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(d.hcAdmin));
+      if(d.cfAdmin) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(d.cfAdmin));
+      localStorage.setItem(KEYS.companies,JSON.stringify(DB.companies));
+      localStorage.setItem(KEYS.history,JSON.stringify(DB.history));
+      renderAll(); renderCommonRev(); renderRMSummary();
+      updateUploadHistory();
       showToast('🔄 다른 기기에서 업데이트됨','ok',4000);
     });
     showToast('✅ Firebase 동기화 완료','ok');
@@ -1281,7 +1354,7 @@ function saveDB(){
   try{ localStorage.setItem(KEYS.pricingExcel,JSON.stringify(DB.pricingExcel)); }catch(e){}
   try{ localStorage.setItem(KEYS.settings,JSON.stringify({theme:DB.settings.theme,lastUpload:DB.settings.lastUpload})); }catch(e){}
   // 2. Firebase 저장 (공유)
-  if(typeof firebase!=='undefined'){
+  if(window.FB && window._db){
     _fbSaving=true;
     const hcVal=(()=>{try{return JSON.parse(localStorage.getItem(HC_ADMIN_KEY)||'null');}catch(e){return null;}})();
     const cfVal=(()=>{try{return JSON.parse(localStorage.getItem(CF_ADMIN_KEY)||'null');}catch(e){return null;}})();
@@ -3389,7 +3462,7 @@ function renderCommonRev(){
     <div style="height:10px;background:var(--border-b);border-radius:5px;overflow:hidden;margin-bottom:20px">
       <div style="height:100%;width:${totalPct.toFixed(1)}%;background:${TC_COL};border-radius:5px;transition:width .6s ease"></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    <div class="common-rev-grid">
       ${catCard('금융중개서비스',hcPlan,hcTotal,hcSubRows(HC_COL),HC_COL)}
       ${catCard('크레디뷰 Mass',crediPlan,crediMass,subItem('신용등급확인서 (B2C)',crediMass,CR_COL),CR_COL)}
       ${catCard('경영진단보고서',edPlan,edActual,edSubRows(ED_COL),ED_COL)}
@@ -3464,13 +3537,14 @@ function renderRMCards(){
     const rmC14=new Date(Date.now()-14*24*60*60*1000); rmC14.setHours(0,0,0,0);
     function makeActSetRange(snap, person, fromDate, toDate){
       const s=new Set();
+      const _today2=new Date(); _today2.setHours(23,59,59,999); // 오늘 상한선
       for(const co of snap.filter(c=>c.RM===person||c.SO===person)){
         const re3=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m3;
         while((m3=re3.exec(co.진행현황||''))!==null){
           const mm2=parseInt(m3[1]),dd2=parseInt(m3[2]);
           const yr2=rmInferYear(mm2,dd2);
           const actD=new Date(yr2,mm2-1,dd2);
-          if(actD>=fromDate&&(toDate===null||actD<toDate)&&yr2===rmCurY)
+          if(actD>=fromDate&&(toDate===null||actD<toDate)&&yr2===rmCurY&&actD<=_today2)
             s.add((co.업체명||'')+'|'+yr2+'/'+mm2+'/'+dd2);
         }
       }
@@ -3643,7 +3717,7 @@ function openPersonDetailWeek(person, weekType){
       const actDate=new Date(yr,mm-1,dd);
       let inRange=false;
       if(weekType===0)  inRange=actDate>=cutoff7&&yr===curYear;   // 금주
-      else              inRange=actDate>=cutoff14&&actDate<cutoff7&&yr===curYear; // 전주
+      else              inRange=actDate>=cutoff14&&actDate<cutoff7&&actDate<=new Date()&&yr===curYear; // 전주
       const dk=co.업체명+'|'+yr+'/'+mm+'/'+dd;
       if(inRange&&!dedup.has(dk)){
         dedup.add(dk);
@@ -3764,7 +3838,7 @@ function renderPersonDetailModal(person,months){
         const mm=parseInt(m9[1]),dd=parseInt(m9[2]);
         const yr=inferYrP(mm,dd);
         const actD=new Date(yr,mm-1,dd);
-        if(actD>=fromDate&&(toDate===null||actD<toDate)&&yr===_pCurY)
+        if(actD>=fromDate&&(toDate===null||actD<toDate)&&actD<=new Date()&&yr===_pCurY)
           s.add((co.업체명||'')+'|'+yr+'/'+mm+'/'+dd);
       }
     }
@@ -4380,7 +4454,7 @@ let _pendingRollbackIdx=null;
 
 function updateUploadHistory(){
   const el=document.getElementById('uploadHistory');
-  if(!DB.history.length){
+  if(!Array.isArray(DB.history)||!DB.history.length){
     el.innerHTML='<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:24px">📂</div><div class="empty-txt" style="font-size:12px">업로드 이력 없음</div></div>';
     return;
   }
@@ -4390,9 +4464,9 @@ function updateUploadHistory(){
     const d=new Date(h.date);
     const dStr=d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})+' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
     const isCur=realIdx===latestIdx;
-    const isFirst=h.isFirst||h.snapshot.length===0;
+    const isFirst=h.isFirst||!h.snapshot||!Array.isArray(h.snapshot)||h.snapshot.length===0;
     const isAutoSave=(h.file||'[]').startsWith('[롤백');
-    const coCount=h.snapshot.length;
+    const coCount=Array.isArray(h.snapshot)?h.snapshot.length:0;
     const pxlCount=(h.pricingExcel||[]).length;
     const countLabel=isFirst?'최초 업로드':`업체 ${coCount}건 · 프라이싱 ${pxlCount}건`;
     return `<div onclick="rollbackToHistory(${realIdx})" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:${isCur?'rgba(59,130,246,0.08)':' var(--bg2)'};border:1px solid ${isCur?'rgba(59,130,246,0.3)':' var(--border)'};border-radius:8px;margin-bottom:8px;font-size:12px;cursor:${isCur?'default':'pointer'}" onmouseenter="if(!${isCur})this.style.borderColor='rgba(59,130,246,.4)'" onmouseleave="if(!${isCur})this.style.borderColor='var(--border)'">
