@@ -3072,15 +3072,15 @@ function openKpiDetail(type){
           <td style="padding:8px;color:var(--t2)">${esc(co.타겟제품)}</td>
           <td style="padding:8px;color:var(--t1)">${esc(co.RM)}</td>
           <td style="padding:8px;color:var(--t2)">${esc(kt)}</td>
-          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtAmt(plan):'—'}</td>
-          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtAmt(p.amount||0)}</td>
+          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?(plan>=1e6?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
+          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
         </tr>`;
       }).join('');
     }
     function sectionHdr(year,count,amt,color){
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;margin-top:14px">
         <span style="font-size:13px;font-weight:700;color:${color}">${year}년 계약</span>
-        <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:700;color:${color}">${fmtAmt(amt)}</span></span>
+        <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:700;color:${color}">${fmtFloorEok(amt)}</span></span>
       </div>`;
     }
     function sectionTbl(arr){
@@ -3203,8 +3203,8 @@ function openPkgDetail(){
         <td style="padding:7px;font-size:12px">${coNameHtml(co)}</td>
         <td style="padding:7px;font-size:12px;color:var(--t1)">${esc(co.RM||'—')}</td>
         <td style="padding:7px;font-size:12px;color:var(--t2)">${esc(co.SO||'—')}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--a2);font-size:12px">${plan>0?fmtAmt(plan):'—'}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--success);font-size:12px;cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtAmt(p.amount||0)}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--a2);font-size:12px">${plan>0?fmtFloorEok(plan):'—'}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--success);font-size:12px;cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
       </tr>`;
     }).join('');
   }
@@ -3266,7 +3266,7 @@ function openSvcDetail(svcKey){
   const actualWithMass=actual+(massAmt/1e8);
   const pct=plan>0?(actualWithMass/plan*100).toFixed(1):0;
   const stats=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">${
-    [['목표',plan+'억','var(--t0)'],['실적',actualWithMass.toFixed(2)+'억','var(--success)'],['달성률',pct+'%','var(--a2)']].map(([l,v,col])=>
+    [['목표',plan+'억','var(--t0)'],['실적',(Math.floor(actualWithMass*100)/100).toFixed(2)+'억','var(--success)'],['달성률',pct+'%','var(--a2)']].map(([l,v,col])=>
       `<div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;font-family:Outfit,sans-serif;color:${col}">${v}</div><div style="font-size:10px;color:var(--t2);margin-top:4px">${l}</div></div>`
     ).join('')
   }</div>`;
@@ -3284,15 +3284,15 @@ function openSvcDetail(svcKey){
         <td style="padding:7px">${coNameHtml(co)}</td>
         <td style="padding:7px;color:var(--t1)">${esc(co.RM||'—')}</td>
         <td style="padding:7px;color:var(--t2)">${esc(co.SO||'—')}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtAmt(plan):'—'}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtAmt(p.amount||0)}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtFloorEok(plan):'—'}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
       </tr>`;
     }).join('');
   }
   function svcSecHdr(year,count,amt,color){
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg2);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;margin-top:12px">
       <span style="font-size:12px;font-weight:700;color:${color}">${year}년 계약</span>
-      <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:700;color:${color}">${fmtAmt(amt)}</span></span>
+      <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:700;color:${color}">${fmtFloorEok(amt)}</span></span>
     </div>`;
   }
   function svcSecTbl(arr){
@@ -3314,7 +3314,7 @@ function openSvcDetail(svcKey){
           <tbody><tr style="border-bottom:1px solid var(--border)">
             <td style="padding:7px;font-weight:600;color:var(--t0)">신용등급확인서 (크레디뷰)</td>
             <td style="padding:7px;color:var(--t2)">Mass B2C</td>
-            <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:#34d399">${fmtAmt(massAmt)}</td>
+            <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:#34d399">${fmtFloorEok(massAmt)}</td>
           </tr></tbody>
         </table>
       </div>`
@@ -3415,7 +3415,7 @@ function showPipelineDetail(stageNum){
             return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;
               background:var(--bg2);border-radius:8px 8px 0 0;border:1px solid ${color}44;border-bottom:none;margin-top:10px">
               <span style="font-size:12px;font-weight:700;color:${color}">${year}년 계약목표</span>
-              <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:600;color:${color}">${amt>0?fmtAmt(amt):'—'}</span></span>
+              <span style="font-size:11px;color:var(--t2)">${count}건 &nbsp;|&nbsp;<span style="font-family:Outfit,sans-serif;font-weight:600;color:${color}">${amt>0?fmtFloorEok(amt):'—'}</span></span>
             </div>`;
           }
           function pipeSecTbl(arr){
@@ -5897,7 +5897,7 @@ async function downloadCFReport(){
     rows.forEach(r=>{if(km[r.계약가능성]!=null)km[r.계약가능성]++;});
     const tA=rows.reduce((s,r)=>s+(r.계약금액||0),0);
     const tI=rows.reduce((s,r)=>s+getI(r),0);
-    const fmtAmt=v=>v?(v/1e8).toFixed(1)+'억':'—';
+    const fmtAmt=v=>v?(Math.floor(v/1e6)/100).toFixed(2)+'억':'—'; // 버림 0.00억
     const kr=ws.getRow(1); kr.height=22;
     [
       ['계약완료 '+km['계약완료']+'건',probC['계약완료']],
