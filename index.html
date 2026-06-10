@@ -996,6 +996,32 @@ const KNOWN_SOS = ['박선정','박경민','육태우','권혁진'];
 
 // ── 임시 추가배정 목표매출 (나중에 삭제 시 이 블록만 제거) ──
 // 카드별 고정 목표매출 (RM/SO 개인별 하드코딩)
+// ── 화요일 기준 주차 계산 ──
+// 이번주: 가장 최근 완료된 월요일 기준 화~월 (6/2~6/8)
+// 지난주: 그 전주 화~월 (5/26~6/1)
+function getWeekRange(){
+  const today = new Date(); today.setHours(23,59,59,999);
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const dow = todayStart.getDay(); // 0=일,1=월,2=화,...
+  // 가장 최근 완료된 월요일: 월요일이면 오늘, 아니면 지난 월요일
+  const daysSinceMon = dow === 0 ? 6 : dow === 1 ? 0 : dow - 1;
+  const lastMon = new Date(todayStart);
+  lastMon.setDate(todayStart.getDate() - daysSinceMon);
+  // 이번주 화요일 = lastMon - 6일
+  const thisStart = new Date(lastMon);
+  thisStart.setDate(lastMon.getDate() - 6);
+  thisStart.setHours(0,0,0,0);
+  const thisEnd = new Date(lastMon);
+  thisEnd.setHours(23,59,59,999);
+  // 지난주
+  const lastStart = new Date(thisStart);
+  lastStart.setDate(thisStart.getDate() - 7);
+  const lastEnd = new Date(thisStart);
+  lastEnd.setDate(thisStart.getDate() - 1);
+  lastEnd.setHours(23,59,59,999);
+  return { thisStart, thisEnd, lastStart, lastEnd };
+}
+
 const FIXED_CARD_TARGET = {
   '이창희': 1020000000,
   '김종환':  1325000000,
@@ -3575,14 +3601,15 @@ function renderRMCards(){
     // 업체명+날짜태그 쌍의 Set 차집합으로 '추가된 활동'만 카운트
     // RM카드 활동: 7일 이내 + 올해 날짜 기준 (delta 비교 없음)
     const rmNow=new Date(); const rmCurY=rmNow.getFullYear(),rmCurM=rmNow.getMonth()+1,rmCurD=rmNow.getDate();
-    const rmCutoff=new Date(Date.now()-7*24*60*60*1000); rmCutoff.setHours(0,0,0,0);
+    const _wr=getWeekRange();
+    const rmCutoff=_wr.thisStart;
     function rmInferYear(mm,dd){
       const d=new Date(rmCurY,mm-1,dd);
       const diffDays=(d-new Date(rmCurY,rmCurM-1,rmCurD))/86400000;
       return diffDays>60?rmCurY-1:rmCurY;
     }
     // 금주: 오늘 기준 7일 이내 / 전주: 오늘 기준 8~14일 전 (팝업과 동일 기준)
-    const rmC14=new Date(Date.now()-14*24*60*60*1000); rmC14.setHours(0,0,0,0);
+    const rmC14=_wr.lastStart;
     function makeActSetRange(snap, person, fromDate, toDate){
       const s=new Set();
       const _today2=new Date(); _today2.setHours(23,59,59,999); // 오늘 상한선
@@ -3599,10 +3626,10 @@ function renderRMCards(){
       return s;
     }
     // 금주: 7일 이내 (현재 DB 기준)
-    const curSet=makeActSetRange(cos, p, rmCutoff, null);
+    const curSet=makeActSetRange(cos, p, rmCutoff, _wr.thisEnd);
     const thisWeekAct=curSet.size>0?curSet.size:null;
     // 전주: 8~14일 전 (현재 DB 기준 — 팝업과 동일)
-    const prevActSet=makeActSetRange(cos, p, rmC14, rmCutoff);
+    const prevActSet=makeActSetRange(cos, p, rmC14, _wr.lastEnd);
     const prevWeekAct=prevActSet.size>0?prevActSet.size:null;
     const avCls=avC[i]||'av-blue';
     const statRow=(label,val,color='var(--t0)')=>
@@ -3744,8 +3771,9 @@ let _salesDetailFilter=0; // 0=전체 week0=금주 week-1=전주 30=1개월
 function openPersonDetailWeek(person, weekType){
   const now=new Date(); const curYear=now.getFullYear(),todayM=now.getMonth()+1,todayD=now.getDate();
   function inferYr(mm,dd){ const d=new Date(curYear,mm-1,dd); return (d-now)/86400000>60?curYear-1:curYear; }
-  const cutoff7=new Date(Date.now()-7*24*60*60*1000); cutoff7.setHours(0,0,0,0);
-  const cutoff14=new Date(Date.now()-14*24*60*60*1000); cutoff14.setHours(0,0,0,0);
+  const _wr2=getWeekRange();
+  const cutoff7=_wr2.thisStart;
+  const cutoff14=_wr2.lastStart;
   const cos=DB.companies.filter(c=>c.RM===person||c.SO===person);
   const pat=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm;
   const acts=[];
@@ -3764,8 +3792,8 @@ function openPersonDetailWeek(person, weekType){
       const yr=inferYr(mm,dd);
       const actDate=new Date(yr,mm-1,dd);
       let inRange=false;
-      if(weekType===0)  inRange=actDate>=cutoff7&&yr===curYear;   // 금주
-      else              inRange=actDate>=cutoff14&&actDate<cutoff7&&actDate<=new Date()&&yr===curYear; // 전주
+      if(weekType===0)  inRange=actDate>=_wr2.thisStart&&actDate<=_wr2.thisEnd&&yr===curYear;
+      else              inRange=actDate>=_wr2.lastStart&&actDate<=_wr2.lastEnd&&yr===curYear;
       const dk=co.업체명+'|'+yr+'/'+mm+'/'+dd;
       if(inRange&&!dedup.has(dk)){
         dedup.add(dk);
@@ -3862,11 +3890,10 @@ function renderPersonDetailModal(person,months){
 
   // 기간 필터: 전주/금주/1개월/전체
   const fNow=new Date(); const fCurY=fNow.getFullYear();
-  const fC7=new Date(Date.now()-7*24*60*60*1000); fC7.setHours(0,0,0,0);
-  const fC14=new Date(Date.now()-14*24*60*60*1000); fC14.setHours(0,0,0,0);
+  const _wrF=getWeekRange();
   const fC30=new Date(Date.now()-30*24*60*60*1000); fC30.setHours(0,0,0,0);
-  const meetings=months==='week0'?allMeetings.filter(m=>m.dateObj>=fC7&&m.year===fCurY)
-    :months==='week-1'?allMeetings.filter(m=>m.dateObj>=fC14&&m.dateObj<fC7&&m.year===fCurY)
+  const meetings=months==='week0'?allMeetings.filter(m=>m.dateObj>=_wrF.thisStart&&m.dateObj<=_wrF.thisEnd&&m.year===fCurY)
+    :months==='week-1'?allMeetings.filter(m=>m.dateObj>=_wrF.lastStart&&m.dateObj<=_wrF.lastEnd&&m.year===fCurY)
     :months===30?allMeetings.filter(m=>m.dateObj>=fC30&&m.year===fCurY)
     :allMeetings;
 
@@ -3875,8 +3902,9 @@ function renderPersonDetailModal(person,months){
 
   // ── 지난주/이번주 활동 계산 (카드와 동일: 오늘 기준 날짜 범위 + dedup) ──
   const _pNow=new Date(); const _pCurY=_pNow.getFullYear();
-  const _pC7=new Date(Date.now()-7*24*60*60*1000); _pC7.setHours(0,0,0,0);
-  const _pC14=new Date(Date.now()-14*24*60*60*1000); _pC14.setHours(0,0,0,0);
+  const _wrP=getWeekRange();
+  const _pC7=_wrP.thisStart;
+  const _pC14=_wrP.lastStart;
   function inferYrP(mm,dd){ const d=new Date(_pCurY,mm-1,dd); return (d-_pNow)/86400000>60?_pCurY-1:_pCurY; }
   function makePopupActRange(fromDate, toDate){
     const s=new Set();
@@ -3893,8 +3921,8 @@ function renderPersonDetailModal(person,months){
     return s;
   }
   // 이번주: 7일 이내, 지난주: 8~14일 전 (카드와 동일 기준)
-  const popupThisWeekAct=makePopupActRange(_pC7, null).size||null;
-  const popupPrevWeekAct=makePopupActRange(_pC14, _pC7).size||null;
+  const popupThisWeekAct=makePopupActRange(_wrP.thisStart, _wrP.thisEnd).size||null;
+  const popupPrevWeekAct=makePopupActRange(_wrP.lastStart, _wrP.lastEnd).size||null;
 
   // ── 강조: 지난주 활동 + 이번주 활동 (가장 먼저, 크게) ──
   const heroSection=`
