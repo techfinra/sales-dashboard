@@ -3103,8 +3103,8 @@ function renderServiceProgress(){
   const cos=getEffectiveCompanies();
   if(!cos.length){el.innerHTML='<div class="empty" style="padding:12px"><div class="empty-txt" style="font-size:12px">데이터 없음</div></div>';return;}
 
-  const fA=v=>!v?'0':v>=1e8?(v/1e8).toFixed(2)+'억':Math.round(v/1e4).toLocaleString()+'만';
-  const fB=v=>!v?'0원':v>=1e8?(v/1e8).toFixed(2)+'억원':Math.round(v/1e4).toLocaleString()+'만원';
+  const fA=v=>!v?'0':(Math.floor(v/1e6)/100).toFixed(2)+'억';
+  const fB=v=>!v?'0.00억원':(Math.floor(v/1e6)/100).toFixed(2)+'억원';
   function bCol(p){return p>=80?'#22c55e':p>=50?'#3b82f6':p>=20?'#f59e0b':'#64748b';}
 
   // 계약완료(5단계) 인식매출 집계
@@ -3187,7 +3187,7 @@ function openPkgDetail(){
     else if(isDB)   byType['DB'].push(co);
     else if(isMon)  byType['모니터링'].push(co);
   }
-  const fA=v=>!v?'0원':v>=1e8?(v/1e8).toFixed(2)+'억원':Math.round(v/1e4).toLocaleString()+'만원';
+  const fA=v=>!v?'0.00억원':(Math.floor(v/1e6)/100).toFixed(2)+'억원';
   const sumAmt=arr=>arr.reduce((s,c)=>s+(getPricing(c).amount||0),0);
   const total=sumAmt([...byType['패키지'],...byType['DB'],...byType['모니터링']]);
   const stats=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
