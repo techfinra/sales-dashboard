@@ -2958,7 +2958,7 @@ function openKpiDetail(type){
         const prodBg={'DATA판매':'rgba(59,130,246,.1)','기업모니터링':'rgba(139,92,246,.1)','기업DB조회':'rgba(20,184,166,.1)','경영진단보고서':'rgba(245,158,11,.1)','크레디뷰':'rgba(16,185,129,.1)'}[prod]||'rgba(148,163,184,.1)';
         const prodColor={'DATA판매':'var(--a2)','기업모니터링':'#a78bfa','기업DB조회':'#2dd4bf','경영진단보고서':'var(--warning)','크레디뷰':'var(--success)'}[prod]||'var(--t2)';
         const rows=g.items.map(({co,p})=>{
-          if(co._isMass) return `<tr style="border-bottom:1px solid var(--border);background:rgba(52,211,153,.04)"><td style="padding:8px 10px;font-weight:600;color:var(--success)">${esc(co.업체명)}</td><td style="padding:8px 10px;color:var(--t2)" colspan="3">Mass (B2C)</td><td style="padding:8px 10px;text-align:right">—</td><td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success)">${fmtAmt(p.amount||0)}</td></tr>`;
+          if(co._isMass) return `<tr style="border-bottom:1px solid var(--border);background:rgba(52,211,153,.04)"><td style="padding:8px 10px;font-weight:600;color:var(--success)">${esc(co.업체명)}</td><td style="padding:8px 10px;color:var(--t2)" colspan="3">Mass (B2C)</td><td style="padding:8px 10px;text-align:right">—</td><td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success)">${fmtFloorEok(p.amount||0)}</td></tr>`;
           const plan=getPlanAmt(co);
           return `
           <tr style="border-bottom:1px solid var(--border)">
@@ -2967,13 +2967,13 @@ function openKpiDetail(type){
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.SO||'—')}</td>
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.계약목표||'—')}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtAmt(plan):'—'}</td>
-            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(getCF(co)||{}).계약목표||''}">${fmtAmt(p.amount||0)}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(getCF(co)||{}).계약목표||''}">${prod==='기업모니터링'?fmtAmt(p.amount||0):fmtFloorEok(p.amount||0)}</td>
           </tr>`;}).join('');
         return `
           <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:${prodBg}">
               <span style="font-size:13px;font-weight:700;color:${prodColor}">${prod}</span>
-              <span style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:var(--t0)">${fmtAmt(g.total)} <span style="font-size:10px;font-weight:400;color:var(--t2)">(${g.items.length}건)</span></span>
+              <span style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:var(--t0)">${prod==='기업모니터링'?fmtAmt(g.total):fmtFloorEok(g.total)} <span style="font-size:10px;font-weight:400;color:var(--t2)">(${g.items.length}건)</span></span>
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:12px">
               <thead><tr style="background:var(--bg2)">
@@ -3484,7 +3484,7 @@ function renderCommonRev(){
   function subItem(name,amt,col){
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border)">
       <span style="font-size:13px;color:var(--t1);font-weight:500">${esc(name)}</span>
-      <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${col||'var(--t0)'}">${fmtCommon(amt)}</span>
+      <span style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;color:${col||'var(--t0)'}">${fmtFloorEok(amt)}</span>
     </div>`;
   }
   function hcSubRows(col){
@@ -3504,7 +3504,7 @@ function renderCommonRev(){
       <div style="padding:16px 18px;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <span style="font-size:14px;font-weight:700;color:var(--t1)">${name}</span>
-          <span style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;color:${col}">${fmtCommon(actual)}</span>
+          <span style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;color:${col}">${fmtFloorEok(actual)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div style="flex:1;height:7px;background:var(--border-b);border-radius:4px;overflow:hidden">
@@ -4706,9 +4706,13 @@ function toggleTheme(){
 
 // Helper formatters
 function fmtEok(v){
-  // 합계 표시용: 항상 소수 2자리 억원
   if(!v||v===0) return '0억원';
   return (v/1e8).toFixed(2).replace(/\.?0+$/,'')+'억원';
+}
+function fmtFloorEok(v){
+  // 0.00억원 형식 — 소수 셋째 자리 버림 (반올림 X)
+  if(!v||v===0) return '0.00억원';
+  return (Math.floor(v/1e6)/100).toFixed(2)+'억원';
 }
 function fmtCommon(v){
   if(!v||v===0) return '0만원';
