@@ -2611,7 +2611,7 @@ function renderKPIs(){
   // KPI 이번주 활동: 7일 이내 + 올해 (상세 팝업과 동일 — delta 비교 없음)
   const prevSnap4kpi = DB.history.length>0?DB.history[DB.history.length-1].snapshot:[];
   const kpiNow=new Date(); const kpiY=kpiNow.getFullYear(),kpiM=kpiNow.getMonth()+1,kpiD=kpiNow.getDate();
-  const kpiCutoff=new Date(Date.now()-7*24*60*60*1000); kpiCutoff.setHours(0,0,0,0);
+  const {thisStart:kpiCutoff, thisEnd:kpiCutoffEnd} = getWeekRange(); // 이번주 화~월
   function kpiInferYear(mm,dd){
     // 오늘 기준 60일 이상 미래면 작년, 그 외 모두 올해
     const d=new Date(kpiY,mm-1,dd);
@@ -2631,7 +2631,7 @@ function renderKPIs(){
         const yr=kpiInferYear(mm,dd);
         const actDate=new Date(yr,mm-1,dd);
         const dk=(c.업체명||'')+'|'+yr+'/'+mm+'/'+dd;
-        if(actDate>=kpiCutoff&&yr===kpiY&&!kpiDedup.has(dk)){
+        if(actDate>=kpiCutoff&&actDate<=kpiCutoffEnd&&yr===kpiY&&!kpiDedup.has(dk)){
           kpiDedup.add(dk); salesActDelta++;
         }
       }
@@ -2742,8 +2742,7 @@ function openWeeklyActivityDetail(){
 
   // ─── A: 7일 이내 + 올해 활동 (delta 비교 없이 날짜 기준만) ───
   // 이전 스냅샷에 있어도 7일 이내면 표시 → 재업로드 시에도 누락 없음
-  const cutoffDate=new Date(Date.now()-7*24*60*60*1000);
-  cutoffDate.setHours(0,0,0,0);
+  const {thisStart:cutoffDate, thisEnd:cutoffDateEnd} = getWeekRange();
 
   const newActivities=[];
   const actDedup=new Set();
@@ -2765,7 +2764,7 @@ function openWeeklyActivityDetail(){
       const yr=inferYear(mm,dd);
       const actDate=new Date(yr,mm-1,dd);
       const dedupKey=(co.업체명||'')+'|'+yr+'/'+mm+'/'+dd;
-      if(actDate>=cutoffDate&&yr===curYear&&!actDedup.has(dedupKey)){
+      if(actDate>=cutoffDate&&actDate<=cutoffDateEnd&&yr===curYear&&!actDedup.has(dedupKey)){
         actDedup.add(dedupKey);
         newActivities.push({year:yr,month:mm,day:dd,dateObj:actDate,
           desc:fullBlock.slice(0,60),  // 목록 미리보기 60자
