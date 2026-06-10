@@ -1012,13 +1012,13 @@ function getWeekRange(){
   thisStart.setDate(lastMon.getDate() - 6);
   thisStart.setHours(0,0,0,0);
   const thisEnd = new Date(lastMon);
-  thisEnd.setHours(23,59,59,999);
+  thisEnd.setHours(23,59,59,999); // 마지막 월요일 끝
   // 지난주
   const lastStart = new Date(thisStart);
   lastStart.setDate(thisStart.getDate() - 7);
   const lastEnd = new Date(thisStart);
   lastEnd.setDate(thisStart.getDate() - 1);
-  lastEnd.setHours(23,59,59,999);
+  lastEnd.setHours(23,59,59,999); // 지난주 마지막 월요일 끝
   return { thisStart, thisEnd, lastStart, lastEnd };
 }
 
@@ -3619,7 +3619,7 @@ function renderRMCards(){
           const mm2=parseInt(m3[1]),dd2=parseInt(m3[2]);
           const yr2=rmInferYear(mm2,dd2);
           const actD=new Date(yr2,mm2-1,dd2);
-          if(actD>=fromDate&&(toDate===null||actD<toDate)&&yr2===rmCurY&&actD<=_today2)
+          if(actD>=fromDate&&(toDate===null||actD<=toDate)&&yr2===rmCurY&&actD<=_today2)
             s.add((co.업체명||'')+'|'+yr2+'/'+mm2+'/'+dd2);
         }
       }
