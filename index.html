@@ -1234,16 +1234,27 @@ function saveHCAdmin(svc){
   if(!_hcAdminTemp) _hcAdminTemp=getHCAdminData();
   const all=getHCAdminData(); all[svc]=_hcAdminTemp[svc]||all[svc];
   localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(all));
-  _hcAdminTemp=null; rebuildHCCompanies(); renderAll();
-  showToast('✅ '+svc+' 저장 완료','ok');
+  // Firebase 즉시 저장 (새로고침 후에도 유지)
+  if(window._db){
+    const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
+    window._db.ref('db/hcAdmin').set(_clean(all))
+      .then(()=>showToast('✅ '+svc+' 저장 완료 (동기화)','ok'))
+      .catch(e=>{console.error('HC Firebase 저장 실패',e);showToast('✅ '+svc+' 저장 완료 (로컬)','ok');});
+  } else {
+    showToast('✅ '+svc+' 저장 완료','ok');
+  }
+  _hcAdminTemp=null; rebuildHCCompanies(); renderAll(); renderCommonRev();
 }
 function deleteHCAdminRow(svc, idx){
   if(!confirm('이 행을 삭제할까요?')) return;
   if(!_hcAdminTemp) _hcAdminTemp=getHCAdminData();
   _hcAdminTemp[svc].splice(idx,1);
-  // 즉시 저장
   const all=getHCAdminData(); all[svc]=_hcAdminTemp[svc];
   localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(all));
+  if(window._db){
+    const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
+    window._db.ref('db/hcAdmin').set(_clean(all)).catch(e=>console.error('HC del FB 실패',e));
+  }
   rebuildHCCompanies(); renderHCAdminCards();
   showToast('행 삭제 완료','ok');
 }
