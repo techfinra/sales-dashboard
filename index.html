@@ -2491,7 +2491,7 @@ function applyDiffAndSave(){
 }
 
 function migrateHCNames(){
-  // localStorage에 저장된 HC_ADMIN_KEY 데이터의 업체명을 최신으로 갱신
+  // 업체명만 최신으로 갱신 — 금액은 관리자 설정값 유지 (덮어쓰기 금지)
   try{
     const saved=JSON.parse(localStorage.getItem(HC_ADMIN_KEY)||'null');
     if(!saved) return;
@@ -2500,22 +2500,17 @@ function migrateHCNames(){
       'hc_중진공_팩토링':'중진공(팩토링)',
       'hc_중진공_네트워크론':'중진공(네트워크론)',
     };
-    const amtMap={
-      'hc_수출입은행_금융중개':{목표금액:36000000,인식금액:36000000},
-      'hc_중진공_팩토링':{목표금액:37000000,인식금액:37000000},
-      'hc_중진공_네트워크론':{목표금액:246000000,인식금액:246000000},
-    };
     let changed=false;
     for(const rows of Object.values(saved)){
+      if(!Array.isArray(rows)) continue;
       for(const r of rows){
-        if(nameMap[r.id]&&r.업체명!==nameMap[r.id]){r.업체명=nameMap[r.id];changed=true;}
-        if(amtMap[r.id]){
-          if(r.목표금액!==amtMap[r.id].목표금액){r.목표금액=amtMap[r.id].목표금액;changed=true;}
-          if(r.인식금액!==amtMap[r.id].인식금액){r.인식금액=amtMap[r.id].인식금액;changed=true;}
+        if(nameMap[r.id]&&r.업체명!==nameMap[r.id]){
+          r.업체명=nameMap[r.id]; changed=true;
         }
+        // ※ 금액(목표금액/인식금액)은 관리자 패널 저장값을 그대로 사용
       }
     }
-    if(changed){localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(saved));console.log('[migrate] HC 업체명/금액 갱신');}
+    if(changed){localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(saved));console.log('[migrate] HC 업체명 갱신');}
   }catch(e){}
 }
 
