@@ -1022,6 +1022,21 @@ function getWeekRange(){
   return { thisStart, thisEnd, lastStart, lastEnd };
 }
 
+// Firebase 배열→객체 변환 전역 함수
+function _fbToArrGlobal(v){
+  if(!v) return v;
+  if(Array.isArray(v)) return v.map(_fbToArrGlobal);
+  if(typeof v==='object'){
+    const keys=Object.keys(v);
+    const isArr=keys.length>0&&keys.every((k,i)=>parseInt(k)===i);
+    if(isArr) return keys.map(k=>_fbToArrGlobal(v[k]));
+    const out={};
+    for(const k of keys) out[k]=_fbToArrGlobal(v[k]);
+    return out;
+  }
+  return v;
+}
+
 const FIXED_CARD_TARGET = {
   '이창희': 1020000000,
   '김종환':  1325000000,
@@ -1392,8 +1407,8 @@ async function loadDBFromFirebase(){
     DB.pricingOverride=po||{};
     DB.pricingExcel=_fbToArr(px)||[];
     if(cfg){DB.settings={...DB.settings,...cfg};DB.settings.isAdmin=false;}
-    if(hc) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(hc));
-    if(cf) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(cf));
+    if(hc) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(hc)));
+    if(cf) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(cf)));
     if(cm) localStorage.setItem(CREDIVIEW_ADMIN_KEY,String(cm));
     localStorage.setItem(KEYS.companies,JSON.stringify(DB.companies));
     localStorage.setItem(KEYS.history,JSON.stringify(DB.history));
@@ -1412,8 +1427,8 @@ async function loadDBFromFirebase(){
       DB.history=_fbToArr(d.history)||[];
       DB.pricingOverride=d.pricingOverride||{};
       DB.pricingExcel=_fbToArr(d.pricingExcel)||[];
-      if(d.hcAdmin) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(d.hcAdmin));
-      if(d.cfAdmin) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(d.cfAdmin));
+      if(d.hcAdmin) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(d.hcAdmin)));
+      if(d.cfAdmin) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(d.cfAdmin)));
       localStorage.setItem(KEYS.companies,JSON.stringify(DB.companies));
       localStorage.setItem(KEYS.history,JSON.stringify(DB.history));
       renderAll(); renderCommonRev(); renderRMSummary();
