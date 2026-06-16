@@ -804,7 +804,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
           <th>구분</th><th style="min-width:100px">업체명</th><th>고객수</th><th>타겟제품</th>
           <th style="min-width:90px">세부구분</th>
           <th style="min-width:140px">유관부서 담당자</th><th>RM</th><th>SO</th>
-          <th>기대실적</th><th>계약목표</th><th>진행단계</th><th style="min-width:200px">진행현황</th>
+          <th>기대실적</th><th>계약목표</th><th>진행단계</th><th style="min-width:120px">방문미팅</th><th style="min-width:200px">진행현황</th>
         </tr></thead>
         <tbody id="previewBody"></tbody>
       </table>
@@ -880,6 +880,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
       <div class="fg"><label class="fl">기대 실적</label><input class="fi" type="text" id="e_expected" placeholder="기대 실적"></div>
       <div class="fg"><label class="fl">유관부서 담당자</label><input class="fi" type="text" id="e_contact" placeholder="담당자명 직책"></div>
     </div>
+    <div class="fg"><label class="fl">방문미팅</label><input class="fi" type="text" id="e_visit" placeholder="예: (6/16)박경민,김종환"></div>
     <div class="fg"><label class="fl">진행 현황</label><textarea class="ft" id="e_status" rows="3" placeholder="최근 미팅, 진행사항 등"></textarea></div>
     <div class="fg-row">
       <div class="fg"><label class="fl">계획금액 (원)</label><input class="fi" type="number" id="e_pricing" placeholder="자동 추정 또는 직접 입력"></div>
@@ -1987,7 +1988,21 @@ function parseDocxHtml(html){
   if(!mainTable){ console.warn('[DOCX] 데이터 테이블 없음'); return []; }
 
   const rows=Array.from(mainTable.querySelectorAll('tr'));
-  const NUM_COLS=12; // 워드 파일 실제 12열
+
+  // ── 헤더행에서 실제 컬럼 수 동적 감지 (방문미팅 열 추가 대응) ──
+  // 방문미팅 포함: 13열 / 미포함: 12열
+  let NUM_COLS=12;
+  for(let ri=0;ri<rows.length;ri++){
+    const rowTxt=rows[ri].textContent.trim();
+    if(rowTxt.includes('구분')&&rowTxt.includes('업체명')&&rowTxt.includes('RM')){
+      const hdrTds=Array.from(rows[ri].querySelectorAll('td,th'));
+      // colspan 고려한 실제 컬럼 수 산출
+      let colCount=0;
+      for(const td of hdrTds) colCount+=parseInt(td.getAttribute('colspan')||1);
+      if(colCount>=13) NUM_COLS=13; // 방문미팅 열 포함
+      break;
+    }
+  }
 
   // ── rowspan 처리를 위한 가상 그리드 ──
   // spanTracker[col] = {text, remaining}
@@ -2364,6 +2379,7 @@ function openPreview(data, filename){
     const changed = best.진행단계!==d.진행단계 ||
                     mergeStatus(best.진행현황,d.진행현황)!==best.진행현황 ||
                     best.계약목표!==d.계약목표 ||
+                    (best.방문미팅||'')!==(d.방문미팅||'') ||
                     rmChanged || soChanged;
     return {...d, id:best.id,
             _rowStatus: changed?'changed':'same',
@@ -2396,7 +2412,7 @@ function openPreview(data, filename){
 
 function renderPreviewTable(){
   const tb=document.getElementById('previewBody');
-  if(!_previewData.length){tb.innerHTML='<tr><td colspan="13"><div class="empty" style="padding:20px"><div class="empty-txt">추출된 데이터 없음</div></div></td></tr>';return;}
+  if(!_previewData.length){tb.innerHTML='<tr><td colspan="14"><div class="empty" style="padding:20px"><div class="empty-txt">추출된 데이터 없음</div></div></td></tr>';return;}
   
   tb.innerHTML=_previewData.map((d,i)=>{
     const rc=d._rowStatus==='new'?'row-new':d._rowStatus==='changed'?'row-chg':'';
@@ -2419,6 +2435,7 @@ function renderPreviewTable(){
       <td><input type="text" value="${esc(d.기대실적||'')}" onchange="updatePreview(${i},'기대실적',this.value)" style="min-width:60px"></td>
       <td><input type="text" value="${esc(d.계약목표||'')}" onchange="updatePreview(${i},'계약목표',this.value)" style="min-width:70px"></td>
       <td><input type="text" value="${esc(d.진행단계||'')}" onchange="updatePreview(${i},'진행단계',this.value)" placeholder="예: 3-3, 8단계" style="min-width:80px"></td>
+      <td><input type="text" value="${esc(d.방문미팅||'')}" onchange="updatePreview(${i},'방문미팅',this.value)" style="min-width:120px" placeholder="예: (6/16)박경민"></td>
       <td><textarea onchange="updatePreview(${i},'진행현황',this.value)" style="min-width:180px">${esc(d.진행현황||'')}</textarea></td>
     </tr>`;
   }).join('');
@@ -2429,7 +2446,7 @@ function updatePreview(idx, field, val){
 }
 
 function addPreviewRow(){
-  _previewData.push({id:genId(),구분:'기타',업체명:'',기업고객수:'',타겟제품:'기업모니터링',_subProd:'',유관부서담당자:'',RM:KNOWN_RMS[0],SO:KNOWN_SOS[0],기대실적:'',계약목표:'',진행단계:'-',진행현황:'',_rowStatus:'new'});
+  _previewData.push({id:genId(),구분:'기타',업체명:'',기업고객수:'',타겟제품:'기업모니터링',_subProd:'',유관부서담당자:'',RM:KNOWN_RMS[0],SO:KNOWN_SOS[0],기대실적:'',계약목표:'',진행단계:'-',방문미팅:'',진행현황:'',_rowStatus:'new'});
   renderPreviewTable();
 }
 
@@ -2467,7 +2484,7 @@ function savePreviewData(){
     if(existing){
       matchedIds.add(existing.id);
       if(d._rowStatus==='changed'){
-        const fields=['진행단계','계약목표','기대실적'];
+        const fields=['진행단계','계약목표','기대실적','방문미팅'];
         const changedFields=fields.filter(f=>existing[f]!==d[f]);
         // 진행현황 델타 체크
         const mergedStatus=mergeStatus(existing.진행현황,d.진행현황);
@@ -2578,7 +2595,7 @@ function commitSave(data){
   // Save snapshot to history before update
   DB.history.push({
     date:new Date().toISOString(),
-    snapshot:DB.companies.map(c=>({id:c.id,업체명:c.업체명,타겟제품:c.타겟제품,구분:c.구분,RM:c.RM,SO:c.SO,_stageNum:c._stageNum,진행단계:c.진행단계,진행현황:c.진행현황,계약목표:c.계약목표,기대실적:c.기대실적,pricing_type:c.pricing_type,pricing_amount:c.pricing_amount,_subProd:c._subProd})),
+    snapshot:DB.companies.map(c=>({id:c.id,업체명:c.업체명,타겟제품:c.타겟제품,구분:c.구분,RM:c.RM,SO:c.SO,_stageNum:c._stageNum,진행단계:c.진행단계,방문미팅:c.방문미팅||'',진행현황:c.진행현황,계약목표:c.계약목표,기대실적:c.기대실적,pricing_type:c.pricing_type,pricing_amount:c.pricing_amount,_subProd:c._subProd})),
     pricingExcel:DB.pricingExcel.map(r=>({...r})),
     pricingOverride:{...DB.pricingOverride},
     file:_previewFileName,
@@ -4635,7 +4652,7 @@ function savePricing(){
 function openAddModal(){
   document.getElementById('editModalTitle').textContent='업체 추가';
   document.getElementById('e_id').value='';
-  ['e_category','e_name','e_customers','e_product','e_rm','e_so','e_stage_raw','e_target_date','e_expected','e_contact','e_status','e_pricing'].forEach(id=>{
+  ['e_category','e_name','e_customers','e_product','e_rm','e_so','e_stage_raw','e_target_date','e_expected','e_contact','e_visit','e_status','e_pricing'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.value='';
   });
@@ -4662,6 +4679,7 @@ function openEditModal(id){
   document.getElementById('e_target_date').value=co.계약목표||'';
   document.getElementById('e_expected').value=co.기대실적||'';
   document.getElementById('e_contact').value=co.유관부서담당자||'';
+  document.getElementById('e_visit').value=co.방문미팅||'';
   document.getElementById('e_status').value=co.진행현황||'';
   const p=getPricing(co);
   document.getElementById('e_pricing').value=p.amount||'';
@@ -4691,6 +4709,7 @@ function saveEdit(){
     계약목표: document.getElementById('e_target_date').value,
     기대실적: document.getElementById('e_expected').value,
     유관부서담당자: document.getElementById('e_contact').value,
+    방문미팅: document.getElementById('e_visit').value,
     진행현황: document.getElementById('e_status').value,
     pricing_type: pType,
     pricing_amount: pAmt,
