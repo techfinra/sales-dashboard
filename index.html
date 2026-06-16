@@ -721,7 +721,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
             </select>
             <select id="asgnFilterSO" style="padding:3px 6px;font-size:11px;background:var(--bg1);border:1px solid var(--border);border-radius:6px;color:var(--t0)" onchange="renderAsgnTable()">
               <option value="">전체 SO</option>
-              <option>박경민</option><option>육태우</option><option>권혁진</option><option>박선정</option>
+              <option>박경민</option><option>육태우</option><option>박선정</option>
             </select>
           </div>
           <div style="overflow-x:auto">
@@ -870,7 +870,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
     </div>
     <div class="fg-row">
       <div class="fg"><label class="fl">RM *</label><select class="fs" id="e_rm"><option>이창희</option><option>김종환</option><option>전힘찬</option><option>기타</option></select></div>
-      <div class="fg"><label class="fl">SO *</label><select class="fs" id="e_so"><option>박경민</option><option>육태우</option><option>박선정</option><option>권혁진</option><option>기타</option></select></div>
+      <div class="fg"><label class="fl">SO *</label><select class="fs" id="e_so"><option>박경민</option><option>육태우</option><option>박선정</option><option>기타</option></select></div>
     </div>
     <div class="fg-row">
       <div class="fg"><label class="fl">진행단계 (원본)</label><input class="fi" type="text" id="e_stage_raw" placeholder="예: 3-3 [사후관리], 8단계"></div>
@@ -993,7 +993,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
 // CONFIG & CONSTANTS
 // =====================================================
 const KNOWN_RMS = ['이창희','김종환','전힘찬'];
-const KNOWN_SOS = ['박선정','박경민','육태우','권혁진'];
+const KNOWN_SOS = ['박선정','박경민','육태우'];
 const KNOWN_ALL = [...new Set([...KNOWN_RMS,...KNOWN_SOS])];
 
 // ── 방문미팅 파싱 ──
@@ -1082,10 +1082,9 @@ const FIXED_CARD_TARGET = {
   '이창희': 1020000000,
   '김종환':  1325000000,
   '전힘찬':   600000000,
-  '박선정':   650000000,
-  '박경민':  1020000000,
-  '육태우':   950000000,
-  '권혁진':   325000000,
+  '박선정':   750000000,
+  '박경민':  1170000000,
+  '육태우':  1050000000,
 };
 function getTempQuota(person){ return 0; } // 임시 할당 제거
 const KNOWN_PRODUCTS = ['Raw Data','DATA판매','기업모니터링','경영진단보고서','기업DB조회','DB조회','크레디뷰','사기거래탐지','패키지'];
@@ -1162,10 +1161,10 @@ const COMPANY_FINANCIALS = {
   "DSC인베스트|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"박경민",진행단계:"",비고:"26/4/14 시연미팅 진행"},
   "KB국민은행|기업모니터링|": {계획금액:36000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"김종환",SO:"박선정",진행단계:"",비고:"DB조회플랫폼 PoC 대용 제안, 6.9(화)~11(목) 설명회 예정"},
   "우리카드|기업모니터링|": {계획금액:20000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"김종환",SO:"박선정",진행단계:"",비고:"6.2(화) 방문 시연 예정"},
-  "전문건설공제조합|기업모니터링|": {계획금액:90000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "정보통신공제조합 ICFC|기업모니터링|": {계획금액:24000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "소방산업공제조합|기업모니터링|": {계획금액:24000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "더존>전략투자Unit|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
+  "전문건설공제조합|기업모니터링|": {계획금액:90000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"육태우",진행단계:"",비고:"Poc → 계약추진"},
+  "정보통신공제조합 ICFC|기업모니터링|": {계획금액:24000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"박경민",진행단계:"",비고:"Poc → 계약추진"},
+  "소방산업공제조합|기업모니터링|": {계획금액:24000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"박경민",진행단계:"",비고:"Poc → 계약추진"},
+  "더존>전략투자Unit|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"육태우",진행단계:"",비고:"Poc → 계약추진"},
   "NH농협캐피탈|기업모니터링|": {계획금액:20000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"박선정",진행단계:"",비고:"제안 미팅 요청 중"},
   "NH벤처투자|기업모니터링|": {계획금액:20000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"이창희",SO:"박선정",진행단계:"",비고:"제안 미팅 예정"},
   "SGI서울보증|기업DB조회|(MVP)": {계획금액:18000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"육태우",진행단계:"",비고:"NDA체결, CB팀 데이터 제공가능여부 확인"},
@@ -1173,29 +1172,29 @@ const COMPANY_FINANCIALS = {
   "하나캐피탈|기업모니터링|": {계획금액:12000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"(5/18) DB조회플랫폼 제안 미팅 진행, 캐피탈사 내부 활용 검토 및 도입 검토 추진 📄 [회의록]하나캐피탈_플랫폼 제안_26.05.18"},
   "롯데캐피탈|기업모니터링|": {계획금액:12000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"(3/4) 기업모니터링 소개 메일, SMS 발송 후 전화(3.9(월) 더존을지빌딩 미팅 진행 일정 확인하여 연락 예정) | 관심도 상"},
   "신용보증기금|DATA판매|": {계획금액:0,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"(4/10) 매출채권보험 연계 제휴 관련하여 더존비즈온 홍보실로부터 협업 요청을 접수 → (4/30) 1차 미팅 일정 제안을 진행함"},
-  "사회적기업진흥원|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"권혁진",진행단계:"",비고:"대면미팅"},
-  "KVCA 한국벤처캐피탈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "KOVA벤처기업협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:""},
-  "인천창조경제혁신센터|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"DB조회플랫폼 정식 출시 이후 논의"},
-  "BNW인베스트먼트|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"적절한 홍보 방안 도출 후 접촉"},
-  "코오롱인베스트먼트|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:""},
-  "마스턴파트너스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:""},
-  "메가존클라우드|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"미회신, 재접촉 예정"},
-  "Plan.H벤처스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"미회신, 재접촉 예정"},
-  "한국투자저축은행|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"미회신, 재접촉 예정"},
-  "정보통신공사협회 KICA|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"양사간 우호 관계 기반, 당사 상품 도입 제안"},
-  "엔지니어링공제조합|기업모니터링|": {계획금액:12000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "하이서울기업협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"제휴비용 협의"},
-  "메인비즈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"제휴비용 협의"},
-  "건설공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"권혁진",진행단계:"",비고:"제휴비용 협의"},
-  "전기공사공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"제안 완료"},
-  "기계설비건설공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"제안 완료"},
-  "방위산업공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"제안 완료"},
-  "이노비즈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
-  "대한기계설비건설협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
-  "소프트웨어공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"권혁진",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
-  "리드코프|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"권혁진",진행단계:"",비고:"Poc → 계약추진"},
-  "AJ네트웍스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"권혁진",진행단계:"",비고:"지속 접촉 예정"},
+  "사회적기업진흥원|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"박경민",진행단계:"",비고:"대면미팅"},
+  "KVCA 한국벤처캐피탈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"Poc → 계약추진"},
+  "KOVA벤처기업협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:""},
+  "인천창조경제혁신센터|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"DB조회플랫폼 정식 출시 이후 논의"},
+  "BNW인베스트먼트|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"적절한 홍보 방안 도출 후 접촉"},
+  "코오롱인베스트먼트|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:""},
+  "마스턴파트너스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:""},
+  "메가존클라우드|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"미회신, 재접촉 예정"},
+  "Plan.H벤처스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"미회신, 재접촉 예정"},
+  "한국투자저축은행|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"육태우",진행단계:"",비고:"미회신, 재접촉 예정"},
+  "정보통신공사협회 KICA|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"양사간 우호 관계 기반, 당사 상품 도입 제안"},
+  "엔지니어링공제조합|기업모니터링|": {계획금액:12000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"이창희",SO:"박경민",진행단계:"",비고:"Poc → 계약추진"},
+  "하이서울기업협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"육태우",진행단계:"",비고:"제휴비용 협의"},
+  "메인비즈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"제휴비용 협의"},
+  "건설공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"박경민",진행단계:"",비고:"제휴비용 협의"},
+  "전기공사공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"제안 완료"},
+  "기계설비건설공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"육태우",진행단계:"",비고:"제안 완료"},
+  "방위산업공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"제안 완료"},
+  "이노비즈협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
+  "대한기계설비건설협회|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"육태우",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
+  "소프트웨어공제조합|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"전힘찬",SO:"박경민",진행단계:"",비고:"MOU 레퍼런스 확인 후 제안"},
+  "리드코프|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"박선정",진행단계:"",비고:"Poc → 계약추진"},
+  "AJ네트웍스|기업모니터링|": {계획금액:6000000,인식금액:0,금액구분:"confirmed",계약목표:"10월",RM:"김종환",SO:"박선정",진행단계:"",비고:"지속 접촉 예정"},
   "토스뱅크|DATA판매|": {계획금액:100000000,인식금액:0,금액구분:"confirmed",계약목표:"2027년",RM:"김종환",SO:"육태우",진행단계:"",비고:"27년 추가매출 기대 5억"},
   "NH카드|DATA판매|(KCB분석용)": {계획금액:100000000,인식금액:0,금액구분:"confirmed",계약목표:"2027년",RM:"이창희",SO:"육태우",진행단계:"",비고:"27년 추가매출 기대 5억"},
   "하나은행|DATA판매|(NICE분석용)": {계획금액:100000000,인식금액:0,금액구분:"confirmed",계약목표:"2027년",RM:"이창희",SO:"육태우",진행단계:"",비고:"27년 추가매출 기대 6억"},
@@ -1223,7 +1222,7 @@ const HC_ADMIN_DEFAULTS = {
   ],
   '기업신용평가': [
     {id:'hc_ce_이창희', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'이창희', SO:'박선정', 목표금액:100000000, 인식금액:0},
-    {id:'hc_ce_김종환', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'김종환',  SO:'권혁진', 목표금액:100000000, 인식금액:0},
+    {id:'hc_ce_김종환', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'김종환',  SO:'박경민', 목표금액:100000000, 인식금액:0},
     {id:'hc_ce_전힘찬', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'전힘찬',  SO:'육태우', 목표금액:300000000, 인식금액:0},
   ],
   '경영진단보고서': [],
@@ -2761,10 +2760,9 @@ function renderKPIs(){
   const totalWeekly=(salesActDelta||0)+newCoCount+pipeChangeCount;
   if(salesActDelta!==null||hasPrevKpi){
     const dColor=totalWeekly>0?'var(--success)':'var(--t2)';
-    // KPI 카드: 방문미팅 / Sales활동 분리 표시
-    const kpiVisitStr=kpiVisitCount>0?`<span style="color:#10b981;font-size:13px;font-weight:700">방문 ${kpiVisitCount}</span> <span style="color:var(--t2);font-size:11px">|</span> `:'';
-    document.getElementById('kpi-weekly').innerHTML=kpiVisitStr+`<span style="color:${dColor}">+${totalWeekly}</span><span class="unit">건</span>`;
-    // 세부 breakdown sub 텍스트
+    // KPI 카드 본문: Sales 활동만 표시 (방문미팅은 sub 텍스트로)
+    document.getElementById('kpi-weekly').innerHTML=`<span style="color:${dColor}">+${totalWeekly}</span><span class="unit">건</span>`;
+    // 세부 breakdown sub 텍스트: 방문미팅 · Sales활동 · 신규 · 단계변경
     const parts=[];
     if(kpiVisitCount>0) parts.push(`방문미팅 ${kpiVisitCount}`);
     if(salesActDelta>0) parts.push(`Sales활동 ${salesActDelta}`);
@@ -3984,20 +3982,20 @@ function openPersonDetailWeek(person, weekType){
       :`<div style="padding:16px;text-align:center;color:var(--t2);font-size:12px">${weekLabel} 방문미팅 없음</div>`;
   }
 
-  // ── 탭 UI ──
+  // ── 탭 UI (방문미팅 먼저, 기본 활성화) ──
   const tabHtml=`
     <div style="display:flex;gap:6px;margin-bottom:12px">
-      <button id="tab-sales-btn" onclick="switchWeekTab('sales')"
-        style="flex:1;padding:8px;border-radius:8px;border:2px solid rgba(59,130,246,.5);background:rgba(59,130,246,.15);color:var(--a2);font-size:12px;font-weight:700;cursor:pointer">
-        📊 Sales 활동 <span style="background:rgba(59,130,246,.3);border-radius:10px;padding:1px 7px;margin-left:4px">${acts.length}</span>
-      </button>
       <button id="tab-visit-btn" onclick="switchWeekTab('visit')"
+        style="flex:1;padding:8px;border-radius:8px;border:2px solid rgba(16,185,129,.5);background:rgba(16,185,129,.15);color:#10b981;font-size:12px;font-weight:700;cursor:pointer">
+        🤝 방문미팅 <span style="background:rgba(16,185,129,.3);border-radius:10px;padding:1px 7px;margin-left:4px">${visits.length}</span>
+      </button>
+      <button id="tab-sales-btn" onclick="switchWeekTab('sales')"
         style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--border);background:var(--bg2);color:var(--t2);font-size:12px;font-weight:700;cursor:pointer">
-        🤝 방문미팅 <span style="background:rgba(16,185,129,.2);border-radius:10px;padding:1px 7px;margin-left:4px;color:#10b981">${visits.length}</span>
+        📊 Sales 활동 <span style="background:rgba(59,130,246,.15);border-radius:10px;padding:1px 7px;margin-left:4px;color:var(--a2)">${acts.length}</span>
       </button>
     </div>
-    <div id="tab-sales-content">${renderSalesTab()}</div>
-    <div id="tab-visit-content" style="display:none">${renderVisitTab()}</div>`;
+    <div id="tab-visit-content">${renderVisitTab()}</div>
+    <div id="tab-sales-content" style="display:none">${renderSalesTab()}</div>`;
 
   window._weekTabSalesRender=renderSalesTab;
   window._weekTabVisitRender=renderVisitTab;
@@ -5558,13 +5556,13 @@ const ASGN_KEY = 'assignment_v48';
 const ASGN_DEFAULT = {
   sectors: [
     {구분:'은행',       RM정:'김종환', RM부:'이창희', SO정:'박경민', SO부:'육태우'},
-    {구분:'카드',       RM정:'이창희', RM부:'김종환', SO정:'박경민', SO부:'권혁진'},
-    {구분:'세무사',     RM정:'이창희', RM부:'전힘찬', SO정:'육태우', SO부:'권혁진'},
+    {구분:'카드',       RM정:'이창희', RM부:'김종환', SO정:'박경민', SO부:'육태우'},
+    {구분:'세무사',     RM정:'이창희', RM부:'전힘찬', SO정:'육태우', SO부:'박경민'},
     {구분:'CB사협업',   RM정:'이창희', RM부:'전힘찬', SO정:'육태우', SO부:'박경민'},
-    {구분:'민간/렌탈',  RM정:'전힘찬', RM부:'이창희', SO정:'육태우', SO부:'권혁진'},
-    {구분:'협회/조합',  RM정:'전힘찬', RM부:'이창희', SO정:'권혁진', SO부:'육태우'},
+    {구분:'민간/렌탈',  RM정:'전힘찬', RM부:'이창희', SO정:'육태우', SO부:'박선정'},
+    {구분:'협회/조합',  RM정:'전힘찬', RM부:'이창희', SO정:'박경민', SO부:'육태우'},
     {구분:'캐피탈/투자',RM정:'이창희', RM부:'김종환', SO정:'박경민', SO부:'육태우'},
-    {구분:'주주사-더존',RM정:'이창희', RM부:'전힘찬', SO정:'육태우', SO부:'권혁진'},
+    {구분:'주주사-더존',RM정:'이창희', RM부:'전힘찬', SO정:'육태우', SO부:'박경민'},
     {구분:'주주사-신한',RM정:'김종환', RM부:'이창희', SO정:'박경민', SO부:'육태우'},
     {구분:'주주사-SGI', RM정:'이창희', RM부:'김종환', SO정:'육태우', SO부:'박경민'},
     {구분:'전체영업지원',RM정:'',       RM부:'',      SO정:'박선정', SO부:''},
@@ -5587,19 +5585,19 @@ const ASGN_DEFAULT = {
     {구분:'카드',        업체명:'신한카드',               RM:'김종환',SO:'박경민'},
     {구분:'카드',        업체명:'우리카드',               RM:'김종환',SO:'박선정'},
     {구분:'카드',        업체명:'하나카드',               RM:'김종환',SO:'박선정'},
-    {구분:'캐피탈/투자', 업체명:'리드코프',               RM:'김종환',SO:'권혁진'},
+    {구분:'캐피탈/투자', 업체명:'리드코프',               RM:'김종환',SO:'박선정'},
     {구분:'캐피탈/투자', 업체명:'애큐온캐피탈',          RM:'김종환',SO:'육태우'},
     {구분:'캐피탈/투자', 업체명:'신한투자증권',          RM:'김종환',SO:'육태우'},
     {구분:'캐피탈/투자', 업체명:'신한캐피탈',            RM:'김종환',SO:'육태우'},
     {구분:'캐피탈/투자', 업체명:'우리금융캐피탈',        RM:'김종환',SO:'육태우'},
-    {구분:'협회/조합',   업체명:'사회적기업진흥원',       RM:'김종환',SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'건설공제조합',           RM:'김종환',SO:'권혁진'},
+    {구분:'협회/조합',   업체명:'사회적기업진흥원',       RM:'김종환',SO:'박경민'},
+    {구분:'협회/조합',   업체명:'건설공제조합',           RM:'김종환',SO:'박경민'},
     {구분:'협회/조합',   업체명:'경기신용보증재단',       RM:'김종환',SO:'박경민'},
     {구분:'CB사',        업체명:'나이스평가정보',          RM:'이창희',SO:'육태우'},
     {구분:'CB사',        업체명:'KCB',                    RM:'이창희',SO:'육태우'},
     {구분:'CB사',        업체명:'KODATA',                 RM:'이창희',SO:'육태우'},
-    {구분:'민간/렌탈',   업체명:'이지크레더블',           RM:'이창희',SO:'권혁진'},
-    {구분:'은행',        업체명:'한국투자저축은행',       RM:'이창희',SO:'권혁진'},
+    {구분:'민간/렌탈',   업체명:'이지크레더블',           RM:'이창희',SO:'박선정'},
+    {구분:'은행',        업체명:'한국투자저축은행',       RM:'이창희',SO:'육태우'},
     {구분:'은행',        업체명:'수출입은행',             RM:'이창희',SO:'박선정'},
     {구분:'은행',        업체명:'[NICE]하나은행',         RM:'이창희',SO:'육태우'},
     {구분:'은행',        업체명:'[NICE]카카오뱅크',       RM:'이창희',SO:'육태우'},
@@ -5610,9 +5608,9 @@ const ASGN_DEFAULT = {
     {구분:'카드',        업체명:'[KCB]신한카드',          RM:'이창희',SO:'육태우'},
     {구분:'카드',        업체명:'[NICE]NH카드',           RM:'이창희',SO:'육태우'},
     {구분:'카드',        업체명:'[KCB]KB국민카드',        RM:'이창희',SO:'육태우'},
-    {구분:'캐피탈/투자', 업체명:'더존>전략투자Unit',      RM:'이창희',SO:'권혁진'},
-    {구분:'캐피탈/투자', 업체명:'마스턴파트너스',         RM:'이창희',SO:'권혁진'},
-    {구분:'캐피탈/투자', 업체명:'BNW인베스트먼트',        RM:'이창희',SO:'권혁진'},
+    {구분:'캐피탈/투자', 업체명:'더존>전략투자Unit',      RM:'이창희',SO:'육태우'},
+    {구분:'캐피탈/투자', 업체명:'마스턴파트너스',         RM:'이창희',SO:'박경민'},
+    {구분:'캐피탈/투자', 업체명:'BNW인베스트먼트',        RM:'이창희',SO:'박경민'},
     {구분:'캐피탈/투자', 업체명:'롯데캐피탈',             RM:'이창희',SO:'박경민'},
     {구분:'캐피탈/투자', 업체명:'컴퍼니케이',             RM:'이창희',SO:'박경민'},
     {구분:'캐피탈/투자', 업체명:'엑스플로인베스트',       RM:'이창희',SO:'박경민'},
@@ -5622,28 +5620,28 @@ const ASGN_DEFAULT = {
     {구분:'캐피탈/투자', 업체명:'MG캐피탈',               RM:'이창희',SO:'박경민'},
     {구분:'캐피탈/투자', 업체명:'NH농협캐피탈',           RM:'이창희',SO:'박선정'},
     {구분:'캐피탈/투자', 업체명:'NH벤처투자',             RM:'이창희',SO:'박선정'},
-    {구분:'협회/조합',   업체명:'정보통신공제조합 ICFC',  RM:'이창희',SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'정보통신공사협회 KICA',  RM:'이창희',SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'엔지니어링공제조합',     RM:'이창희',SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'소방산업공제조합',       RM:'이창희',SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'전문건설공제조합',       RM:'이창희',SO:'권혁진'},
+    {구분:'협회/조합',   업체명:'정보통신공제조합 ICFC',  RM:'이창희',SO:'박경민'},
+    {구분:'협회/조합',   업체명:'정보통신공사협회 KICA',  RM:'이창희',SO:'박경민'},
+    {구분:'협회/조합',   업체명:'엔지니어링공제조합',     RM:'이창희',SO:'박경민'},
+    {구분:'협회/조합',   업체명:'소방산업공제조합',       RM:'이창희',SO:'박경민'},
+    {구분:'협회/조합',   업체명:'전문건설공제조합',       RM:'이창희',SO:'육태우'},
     {구분:'협회/조합',   업체명:'신용보증기금',           RM:'이창희',SO:'박경민'},
     {구분:'협회/조합',   업체명:'중진공창업지원처',       RM:'이창희',SO:'육태우'},
-    {구분:'민간/렌탈',   업체명:'메가존클라우드',         RM:'전힘찬', SO:'권혁진'},
-    {구분:'캐피탈/투자', 업체명:'한국벤처캐피탈협회',    RM:'전힘찬', SO:'권혁진'},
-    {구분:'캐피탈/투자', 업체명:'코오롱인베스트먼트',    RM:'전힘찬', SO:'권혁진'},
-    {구분:'캐피탈/투자', 업체명:'Plan.H벤처스',          RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'중진공',                 RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'KOVA벤처기업협회',       RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'인천창조경제혁신센터',   RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'하이서울기업협회',       RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'메인비즈협회',           RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'전기공사공제조합',       RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'기계설비건설공제조합',   RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'방위산업공제조합',       RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'이노비즈협회',           RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'대한기계설비건설협회',   RM:'전힘찬', SO:'권혁진'},
-    {구분:'협회/조합',   업체명:'소프트웨어공제조합',     RM:'전힘찬', SO:'권혁진'},
+    {구분:'민간/렌탈',   업체명:'메가존클라우드',         RM:'전힘찬', SO:'박경민'},
+    {구분:'캐피탈/투자', 업체명:'한국벤처캐피탈협회',    RM:'전힘찬', SO:'박경민'},
+    {구분:'캐피탈/투자', 업체명:'코오롱인베스트먼트',    RM:'전힘찬', SO:'박경민'},
+    {구분:'캐피탈/투자', 업체명:'Plan.H벤처스',          RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'중진공',                 RM:'전힘찬', SO:'육태우'},
+    {구분:'협회/조합',   업체명:'KOVA벤처기업협회',       RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'인천창조경제혁신센터',   RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'하이서울기업협회',       RM:'전힘찬', SO:'육태우'},
+    {구분:'협회/조합',   업체명:'메인비즈협회',           RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'전기공사공제조합',       RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'기계설비건설공제조합',   RM:'전힘찬', SO:'육태우'},
+    {구분:'협회/조합',   업체명:'방위산업공제조합',       RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'이노비즈협회',           RM:'전힘찬', SO:'박경민'},
+    {구분:'협회/조합',   업체명:'대한기계설비건설협회',   RM:'전힘찬', SO:'육태우'},
+    {구분:'협회/조합',   업체명:'소프트웨어공제조합',     RM:'전힘찬', SO:'박경민'},
     {구분:'협회/조합',   업체명:'자본재공제조합',         RM:'전힘찬', SO:'박선정'},
   ]
 };
@@ -5736,7 +5734,7 @@ function renderAsgnTable(){
   if(cnt) cnt.textContent=`총 ${rows.length}개 기관`;
   const IS='padding:2px 4px;font-size:11px;background:var(--bg1);border:1px solid var(--border);border-radius:3px;color:var(--t0)';
   const rmOpts=['김종환','이창희','전힘찬'].map(n=>`<option${n===''?' selected':''}>${n}</option>`).join('');
-  const soOpts=['박경민','육태우','권혁진','박선정'].map(n=>`<option>${n}</option>`).join('');
+  const soOpts=['박경민','육태우','박선정'].map(n=>`<option>${n}</option>`).join('');
   tbody.innerHTML=rows.map((r,i)=>{
     const bgColor=r.RM==='김종환'?'rgba(59,130,246,.06)':r.RM==='이창희'?'rgba(16,185,129,.06)':r.RM==='전힘찬'?'rgba(245,158,11,.06)':'';
     return `<tr data-ci="${i}" style="border-bottom:1px solid var(--border);background:${bgColor}">
@@ -5746,7 +5744,7 @@ function renderAsgnTable(){
         <option value=""></option>${['김종환','이창희','전힘찬'].map(n=>`<option${n===r.RM?' selected':''}>${n}</option>`).join('')}
       </select></td>
       <td style="padding:3px 4px"><select data-cf="SO" style="${IS}">
-        <option value=""></option>${['박경민','육태우','권혁진','박선정'].map(n=>`<option${n===r.SO?' selected':''}>${n}</option>`).join('')}
+        <option value=""></option>${['박경민','육태우','박선정'].map(n=>`<option${n===r.SO?' selected':''}>${n}</option>`).join('')}
       </select></td>
       <td style="padding:3px 4px"><button class="btn btn-d btn-sm" style="padding:2px 7px;font-size:10px" onclick="deleteAsgnRow(this)">✕</button></td>
     </tr>`;
@@ -5777,7 +5775,7 @@ function addAsgnRow(){
       <option value=""></option>${['김종환','이창희','전힘찬'].map(n=>`<option>${n}</option>`).join('')}
     </select></td>
     <td style="padding:3px 4px"><select data-cf="SO" style="${IS}">
-      <option value=""></option>${['박경민','육태우','권혁진','박선정'].map(n=>`<option>${n}</option>`).join('')}
+      <option value=""></option>${['박경민','육태우','박선정'].map(n=>`<option>${n}</option>`).join('')}
     </select></td>
     <td style="padding:3px 4px"><button class="btn btn-d btn-sm" style="padding:2px 7px;font-size:10px" onclick="deleteAsgnRow(this)">✕</button></td>`;
   tbody.insertBefore(tr, tbody.firstChild);
@@ -5807,7 +5805,7 @@ async function downloadAsgnExcel(){
   const LIGHT='FFF1F5F9', BORDER='FFD1D5DB', DARK='FF1A1A2E';
 
   // 직급 매핑
-  const TL={이창희:'이사',김종환:'본부장',전힘찬:'차장',박선정:'차장',박경민:'과장',육태우:'과장',권혁진:'대리'};
+  const TL={이창희:'이사',김종환:'본부장',전힘찬:'차장',박선정:'차장',박경민:'과장',육태우:'과장'};
   function wt(n){return n?(n+(TL[n]?' '+TL[n]:'')).trim():'';}
 
   // 헬퍼
@@ -5869,7 +5867,7 @@ async function downloadAsgnExcel(){
   hdr(ws.getCell(row,4),'담당자',NAVY2); hdr(ws.getCell(row,5),'기관 수',NAVY2);
   ws.getRow(row).height=20; row++;
 
-  const RML=['김종환','이창희','전힘찬'], SOL=['박경민','육태우','권혁진','박선정'];
+  const RML=['김종환','이창희','전힘찬'], SOL=['박경민','육태우','박선정'];
   const maxR=Math.max(RML.length,SOL.length);
   for(let i=0;i<maxR;i++){
     const bg=i%2===0?WHITE:LIGHT;
@@ -6053,7 +6051,7 @@ async function downloadCFReport(){
   const soC={
     '박경민':{bg:'FFEDE9FE',ft:'FF4C1D95'},
     '육태우':{bg:'FFFDE68A',ft:'FF92400E'},
-    '권혁진':{bg:'FFE0F2FE',ft:'FF075985'},
+
     '박선정':{bg:'FFFCE7F3',ft:'FF831843'},
   };
   function timingC(t){
@@ -6230,7 +6228,7 @@ async function downloadCFReport(){
   const wb=new ExcelJS.Workbook();
   wb.creator='세일즈추진팀'; wb.created=new Date();
   buildSheet(wb,'보고서',allRows,null);
-  for(const p of ['이창희','김종환','전힘찬','박선정','박경민','육태우','권혁진']){
+  for(const p of ['이창희','김종환','전힘찬','박선정','박경민','육태우']){
     buildSheet(wb,p,allRows.filter(r=>(r.RM||'')===p||(r.SO||'')===p),p);
   }
 
