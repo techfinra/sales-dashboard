@@ -1136,7 +1136,7 @@ const COMPANY_FINANCIALS = {
   "신한은행|DATA판매|(월별재무제표)": {계획금액:270000000,인식금액:90000000,금액구분:"confirmed",계약목표:"25년12월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
   "신한은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"25년9월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
   "신한은행|DATA판매|": {계획금액:0,인식금액:0,금액구분:"confirmed",계약목표:"-",RM:"김종환",SO:"박경민",진행단계:"1단계"},
-  "신한은행|기업모니터링|": {계획금액:3300000,인식금액:0,금액구분:"confirmed",계약목표:"5월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
+  "신한은행|기업모니터링|": {계획금액:3000000,인식금액:3000000,금액구분:"confirmed",계약목표:"계약완료",RM:"김종환",SO:"박경민",진행단계:"8단계"},
   "신한카드|DATA판매|(월별매입매출)": {계획금액:200000000,인식금액:66666666,금액구분:"confirmed",계약목표:"25년10월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
   "제주은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"2월중",RM:"김종환",SO:"육태우",진행단계:"8단계"},
   // ── 엑셀 정리(금액有) 기준 엔트리 (v48 동기화) ──
@@ -3069,14 +3069,14 @@ function openKpiDetail(type){
             <td style="padding:8px 10px;color:var(--t1)">${esc(co.RM||'—')}</td>
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.SO||'—')}</td>
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.계약목표||'—')}</td>
-            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtAmt(plan):'—'}</td>
-            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(getCF(co)||{}).계약목표||''}">${prod==='기업모니터링'?fmtAmt(p.amount||0):fmtFloorEok(p.amount||0)}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--a2)">${plan>0?(plan>=1e6?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(getCF(co)||{}).계약목표||''}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
           </tr>`;}).join('');
         return `
           <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:${prodBg}">
               <span style="font-size:13px;font-weight:700;color:${prodColor}">${prod}</span>
-              <span style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:var(--t0)">${prod==='기업모니터링'?fmtAmt(g.total):fmtFloorEok(g.total)} <span style="font-size:10px;font-weight:400;color:var(--t2)">(${g.items.length}건)</span></span>
+              <span style="font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:var(--t0)">${g.total>=1e6?fmtFloorEok(g.total):fmtAmt(g.total)} <span style="font-size:10px;font-weight:400;color:var(--t2)">(${g.items.length}건)</span></span>
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:12px">
               <thead><tr style="background:var(--bg2)">
