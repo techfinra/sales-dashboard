@@ -1094,7 +1094,7 @@ const STAGE_COLORS = ['#475569','#d97706','#3b82f6','#8b5cf6','#14b8a6','#059669
 // Service Plan (억원, 인식기준 from Excel)
 const SERVICE_PLANS = {'DATA판매':14.79,'기업모니터링':6.62,'기업DB조회':3.01,'경영진단보고서':2.15,'기업신용평가':15.00,'금융중개서비스':6.50};
 const TOTAL_PLAN = 48.07;
-const CREDIVIEW_MASS_DEFAULT = 149700000; // 크레디뷰 Mass 14,970만원 // 크레디뷰 Mass 기본값
+const CREDIVIEW_MASS_DEFAULT = 181510000; // 크레디뷰 Mass 18,151만원 (2026.06 기준)
 const CREDIVIEW_ADMIN_KEY = 'crediviewMassAdmin_v1';
 function getCrediviewMass(){
   try{ const v=localStorage.getItem(CREDIVIEW_ADMIN_KEY); return v?parseInt(v):CREDIVIEW_MASS_DEFAULT; }
@@ -2907,9 +2907,27 @@ function openWeeklyActivityDetail(){
     return !prevStages.has(curS);
   });
 
-  // ─── 서머리 카드 (A, B, C) ───
+  // ─── D: 이번주 방문미팅 ───
+  const {thisStart:visitCutoff, thisEnd:visitCutoffEnd}=getWeekRange();
+  const visitDedup=new Set();
+  const thisWeekVisits=[];
+  for(const co of cos){
+    const parsed=parseVisitMeetings(co.방문미팅||'');
+    for(const v of parsed){
+      if(v.date>=visitCutoff&&v.date<=visitCutoffEnd){
+        const vdk=(co.업체명||'')+'|'+v.yr+'/'+v.mm+'/'+v.dd;
+        if(!visitDedup.has(vdk)){
+          visitDedup.add(vdk);
+          thisWeekVisits.push({yr:v.yr,mm:v.mm,dd:v.dd,dateObj:v.date,업체명:co.업체명,타겟제품:co.타겟제품||'',RM:co.RM,SO:co.SO,names:v.names});
+        }
+      }
+    }
+  }
+  thisWeekVisits.sort((a,b)=>b.dateObj-a.dateObj);
+
+  // ─── 서머리 카드 (A, B, C, D) ───
   const summaryCards=`
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
     <div style="background:${actDelta>0?'rgba(59,130,246,.15)':'rgba(59,130,246,.06)'};border:2px solid ${actDelta>0?'rgba(59,130,246,.5)':'rgba(59,130,246,.15)'};border-radius:12px;padding:16px;text-align:center">
       <div style="font-size:10px;font-weight:700;color:var(--a2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">A · 신규 Sales 활동</div>
       <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:var(--a2);line-height:1">${hasPrev?actDelta:'—'}</div>
@@ -2924,6 +2942,11 @@ function openWeeklyActivityDetail(){
       <div style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">C · 파이프라인 변경</div>
       <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:var(--warning);line-height:1">${hasPrev?pipeChanges.length:'—'}</div>
       <div style="font-size:11px;color:var(--warning);margin-top:6px">${hasPrev?pipeChanges.length+'건 단계 변경':'기준 데이터 없음'}</div>
+    </div>
+    <div style="background:${thisWeekVisits.length>0?'rgba(16,185,129,.15)':'rgba(16,185,129,.06)'};border:2px solid ${thisWeekVisits.length>0?'rgba(16,185,129,.5)':'rgba(16,185,129,.15)'};border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">D · 방문미팅</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:#10b981;line-height:1">${thisWeekVisits.length}</div>
+      <div style="font-size:11px;color:#10b981;margin-top:6px">${thisWeekVisits.length>0?thisWeekVisits.length+'건 이번주 방문':'이번주 방문미팅 없음'}</div>
     </div>
   </div>`;
 
@@ -3024,8 +3047,38 @@ function openWeeklyActivityDetail(){
   hasPrev?`<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">C · 파이프라인 단계 변경 없음</div>`:
   `<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">C · 파일을 두 번 이상 업로드하면 비교 결과가 표시됩니다</div>`;
 
+  // ─── D 세부: 방문미팅 목록 ───
+  const visitDetail=thisWeekVisits.length?`
+  <div style="margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:10px">
+      <span style="background:rgba(16,185,129,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.3)">D · 이번 주 방문미팅 ${thisWeekVisits.length}건</span>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:rgba(16,185,129,.06)">
+          <th style="padding:8px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:700;border-bottom:1px solid var(--border)">날짜</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:700;border-bottom:1px solid var(--border)">업체명</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:700;border-bottom:1px solid var(--border)">타겟제품</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:700;border-bottom:1px solid var(--border)">RM / SO</th>
+          <th style="padding:8px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:700;border-bottom:1px solid var(--border)">참석자</th>
+        </tr></thead>
+        <tbody>${thisWeekVisits.map(v=>{
+          const dateStr=`${v.yr}.${String(v.mm).padStart(2,'0')}.${String(v.dd).padStart(2,'0')}`;
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:7px 12px;font-family:'Outfit',sans-serif;font-weight:600;color:#10b981;white-space:nowrap">${dateStr}</td>
+            <td style="padding:7px 12px;font-weight:600;color:var(--t0)">${esc(v.업체명||'')}</td>
+            <td style="padding:7px 12px">${prodBadge(v.타겟제품||'')}</td>
+            <td style="padding:7px 12px;color:var(--t2)">${esc(v.RM||'')} / ${esc(v.SO||'')}</td>
+            <td style="padding:7px 12px;color:var(--t1);font-weight:600">${esc(v.names.join(', '))}</td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`:
+  `<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">D · 이번 주 방문미팅 없음</div>`;
+
   document.getElementById('detailModalTitle').textContent='이번 주 Sales 활동 요약 (지난주 대비)';
-  document.getElementById('detailModalContent').innerHTML=summaryCards+actDetail+newCoDetail+pipeDetail;
+  document.getElementById('detailModalContent').innerHTML=summaryCards+actDetail+newCoDetail+pipeDetail+visitDetail;
   openModal('detailModal');
 }
 
@@ -3734,8 +3787,14 @@ function renderRMCards(){
     const prevActSet=makeActSetRange(cos, p, rmC14, _wr.lastEnd);
     const prevWeekAct=prevActSet.size>0?prevActSet.size:null;
     // ── 방문미팅 카운트 ──
+    // myCos: RM/SO 담당 업체 + 방문미팅 names에 본인이 포함된 업체 (SO 아니어도 참석한 경우 포함)
     const allCos=getEffectiveCompanies();
-    const myCos=allCos.filter(c=>c.RM===p||c.SO===p);
+    const myCos=allCos.filter(c=>{
+      if(c.RM===p||c.SO===p) return true;
+      // 방문미팅 필드에 본인 이름이 포함된 업체도 포함
+      const visits=parseVisitMeetings(c.방문미팅||'');
+      return visits.some(v=>v.names.includes(p));
+    });
     const thisVisit=countVisitMeetings(p, myCos, _wr.thisStart, _wr.thisEnd);
     const prevVisit=countVisitMeetings(p, myCos, _wr.lastStart, _wr.lastEnd);
     const avCls=avC[i]||'av-blue';
@@ -3901,7 +3960,13 @@ function openPersonDetailWeek(person, weekType){
   const now=new Date(); const curYear=now.getFullYear(),todayM=now.getMonth()+1,todayD=now.getDate();
   function inferYr(mm,dd){ const d=new Date(curYear,mm-1,dd); return (d-now)/86400000>60?curYear-1:curYear; }
   const _wr2=getWeekRange();
-  const cos=getEffectiveCompanies().filter(c=>c.RM===person||c.SO===person);
+  // RM/SO 담당 업체 + 방문미팅 names에 본인이 포함된 업체 (동반 참석 케이스 포함)
+  const _allCosW=getEffectiveCompanies();
+  const cos=_allCosW.filter(c=>{
+    if(c.RM===person||c.SO===person) return true;
+    const _v=parseVisitMeetings(c.방문미팅||'');
+    return _v.some(v=>v.names.includes(person));
+  });
 
   // ── Sales 활동 추출 ──
   const acts=[];
@@ -4129,8 +4194,12 @@ function renderPersonDetailModal(person,months){
   const popupThisWeekAct=makePopupActRange(_wrP.thisStart, _wrP.thisEnd).size||null;
   const popupPrevWeekAct=makePopupActRange(_wrP.lastStart, _wrP.lastEnd).size||null;
 
-  // ── 방문미팅 카운트 (hero 섹션용) ──
-  const heroAllCos=getEffectiveCompanies().filter(c=>c.RM===person||c.SO===person);
+  // ── 방문미팅 카운트 (hero 섹션용) — RM/SO + 방문미팅 names 포함 업체 ──
+  const heroAllCos=getEffectiveCompanies().filter(c=>{
+    if(c.RM===person||c.SO===person) return true;
+    const _hv=parseVisitMeetings(c.방문미팅||'');
+    return _hv.some(v=>v.names.includes(person));
+  });
   const heroThisVisit=countVisitMeetings(person,heroAllCos,_wrP.thisStart,_wrP.thisEnd);
   const heroPrevVisit=countVisitMeetings(person,heroAllCos,_wrP.lastStart,_wrP.lastEnd);
 
