@@ -2925,36 +2925,36 @@ function openWeeklyActivityDetail(){
   }
   thisWeekVisits.sort((a,b)=>b.dateObj-a.dateObj);
 
-  // ─── 서머리 카드 (A, B, C, D) ───
+  // ─── 서머리 카드 (A=방문미팅, B=신규Sales활동, C=신규업체, D=파이프라인변경) ───
   const summaryCards=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    <div style="background:${thisWeekVisits.length>0?'rgba(16,185,129,.15)':'rgba(16,185,129,.06)'};border:2px solid ${thisWeekVisits.length>0?'rgba(16,185,129,.5)':'rgba(16,185,129,.15)'};border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">A · 방문미팅</div>
+      <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:#10b981;line-height:1">${thisWeekVisits.length}</div>
+      <div style="font-size:11px;color:#10b981;margin-top:6px">${thisWeekVisits.length>0?thisWeekVisits.length+'건 이번주 방문':'이번주 방문미팅 없음'}</div>
+    </div>
     <div style="background:${actDelta>0?'rgba(59,130,246,.15)':'rgba(59,130,246,.06)'};border:2px solid ${actDelta>0?'rgba(59,130,246,.5)':'rgba(59,130,246,.15)'};border-radius:12px;padding:16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;color:var(--a2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">A · 신규 Sales 활동</div>
+      <div style="font-size:10px;font-weight:700;color:var(--a2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">B · 신규 Sales 활동</div>
       <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:var(--a2);line-height:1">${hasPrev?actDelta:'—'}</div>
       <div style="font-size:11px;color:${hasPrev?actColor:'var(--t2)'};margin-top:6px">${hasPrev?actDeltaStr+'건 지난주 대비 신규':'기준 데이터 없음'}</div>
     </div>
     <div style="background:${newCos.length>0?'rgba(16,185,129,.15)':'rgba(16,185,129,.06)'};border:2px solid ${newCos.length>0?'rgba(16,185,129,.5)':'rgba(16,185,129,.15)'};border-radius:12px;padding:16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">B · 신규 업체</div>
+      <div style="font-size:10px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">C · 신규 업체</div>
       <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:var(--success);line-height:1">${hasPrev?newCos.length:'—'}</div>
       <div style="font-size:11px;color:var(--success);margin-top:6px">${hasPrev?'+'+newCos.length+'건 신규 등록':'기준 데이터 없음'}</div>
     </div>
     <div style="background:${pipeChanges.length>0?'rgba(245,158,11,.15)':'rgba(245,158,11,.06)'};border:2px solid ${pipeChanges.length>0?'rgba(245,158,11,.5)':'rgba(245,158,11,.15)'};border-radius:12px;padding:16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">C · 파이프라인 변경</div>
+      <div style="font-size:10px;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">D · 파이프라인 변경</div>
       <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:var(--warning);line-height:1">${hasPrev?pipeChanges.length:'—'}</div>
       <div style="font-size:11px;color:var(--warning);margin-top:6px">${hasPrev?pipeChanges.length+'건 단계 변경':'기준 데이터 없음'}</div>
     </div>
-    <div style="background:${thisWeekVisits.length>0?'rgba(16,185,129,.15)':'rgba(16,185,129,.06)'};border:2px solid ${thisWeekVisits.length>0?'rgba(16,185,129,.5)':'rgba(16,185,129,.15)'};border-radius:12px;padding:16px;text-align:center">
-      <div style="font-size:10px;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">D · 방문미팅</div>
-      <div style="font-family:'Outfit',sans-serif;font-size:36px;font-weight:900;color:#10b981;line-height:1">${thisWeekVisits.length}</div>
-      <div style="font-size:11px;color:#10b981;margin-top:6px">${thisWeekVisits.length>0?thisWeekVisits.length+'건 이번주 방문':'이번주 방문미팅 없음'}</div>
-    </div>
   </div>`;
 
-  // ─── A 세부: 신규 활동 목록 ───
+  // ─── B 세부: 신규 활동 목록 ───
   const actDetail=newActivities.length?`
   <div style="margin-bottom:20px">
     <div style="font-size:12px;font-weight:700;color:var(--a2);margin-bottom:10px">
-      <span style="background:rgba(59,130,246,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(59,130,246,.3)">A · 이번 주 신규 활동 ${newActivities.length}건</span>
+      <span style="background:rgba(59,130,246,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(59,130,246,.3)">B · 이번 주 신규 활동 ${newActivities.length}건</span>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -2979,14 +2979,14 @@ function openWeeklyActivityDetail(){
       </table>
     </div>
   </div>`:
-  hasPrev?`<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">A · 이번 주 신규 활동 없음</div>`:
+  hasPrev?`<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">B · 이번 주 신규 활동 없음</div>`:
   `<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">A · 파일을 두 번 이상 업로드하면 비교 결과가 표시됩니다</div>`;
 
-  // ─── B 세부: 신규업체 목록 ───
+  // ─── C 세부: 신규업체 목록 ───
   const newCoDetail=newCos.length?`
   <div style="margin-bottom:20px">
     <div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:10px">
-      <span style="background:rgba(16,185,129,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.3)">B · 신규 업체 ${newCos.length}건</span>
+      <span style="background:rgba(16,185,129,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.3)">C · 신규 업체 ${newCos.length}건</span>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -3007,14 +3007,14 @@ function openWeeklyActivityDetail(){
       </table>
     </div>
   </div>`:
-  hasPrev?`<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">B · 이번 주 신규 업체 없음</div>`:
+  hasPrev?`<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">C · 이번 주 신규 업체 없음</div>`:
   `<div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">B · 파일을 두 번 이상 업로드하면 비교 결과가 표시됩니다</div>`;
 
-  // ─── C 세부: 파이프라인 변경 ───
+  // ─── D 세부: 파이프라인 변경 ───
   const pipeDetail=pipeChanges.length?`
   <div style="margin-bottom:10px">
     <div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:10px">
-      <span style="background:rgba(245,158,11,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(245,158,11,.3)">C · 파이프라인 단계 변경 ${pipeChanges.length}건</span>
+      <span style="background:rgba(245,158,11,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(245,158,11,.3)">D · 파이프라인 단계 변경 ${pipeChanges.length}건</span>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -3044,14 +3044,14 @@ function openWeeklyActivityDetail(){
       </table>
     </div>
   </div>`:
-  hasPrev?`<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">C · 파이프라인 단계 변경 없음</div>`:
+  hasPrev?`<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">D · 파이프라인 단계 변경 없음</div>`:
   `<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">C · 파일을 두 번 이상 업로드하면 비교 결과가 표시됩니다</div>`;
 
-  // ─── D 세부: 방문미팅 목록 ───
+  // ─── A 세부: 방문미팅 목록 ───
   const visitDetail=thisWeekVisits.length?`
   <div style="margin-bottom:10px">
     <div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:10px">
-      <span style="background:rgba(16,185,129,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.3)">D · 이번 주 방문미팅 ${thisWeekVisits.length}건</span>
+      <span style="background:rgba(16,185,129,.15);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,.3)">A · 이번 주 방문미팅 ${thisWeekVisits.length}건</span>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -3075,10 +3075,10 @@ function openWeeklyActivityDetail(){
       </table>
     </div>
   </div>`:
-  `<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">D · 이번 주 방문미팅 없음</div>`;
+  `<div style="margin-bottom:10px;padding:14px;background:var(--bg2);border-radius:10px;text-align:center;color:var(--t2);font-size:12px">A · 이번 주 방문미팅 없음</div>`;
 
   document.getElementById('detailModalTitle').textContent='이번 주 Sales 활동 요약 (지난주 대비)';
-  document.getElementById('detailModalContent').innerHTML=summaryCards+actDetail+newCoDetail+pipeDetail+visitDetail;
+  document.getElementById('detailModalContent').innerHTML=summaryCards+visitDetail+actDetail+newCoDetail+pipeDetail;
   openModal('detailModal');
 }
 
