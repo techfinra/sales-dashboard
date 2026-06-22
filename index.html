@@ -1063,6 +1063,41 @@ function getWeekRange(){
   return { thisStart, thisEnd, lastStart, lastEnd };
 }
 
+// ── Weekly Anchor (주간 고정 비교 기준) ──
+// 화요일 기준 주차 키 반환 예: "2026-06-17" (이번 주 화요일 날짜)
+function getWeekKey(){
+  const {thisStart}=getWeekRange();
+  return `${thisStart.getFullYear()}-${String(thisStart.getMonth()+1).padStart(2,'0')}-${String(thisStart.getDate()).padStart(2,'0')}`;
+}
+
+// 현재 weeklyBase 반환 (없으면 null)
+function getWeeklyBase(){
+  return DB.weeklyBase||null;
+}
+
+// weeklyBase 갱신 조건 체크 & 필요 시 저장
+// - 이번 주 weekKey와 저장된 weekKey가 다르면 → 현재 companies로 새 베이스 저장
+// - 이미 이번 주 베이스가 있으면 → 유지 (업로드 덮어씌워도 안 바뀜)
+function refreshWeeklyBase(force){
+  const weekKey=getWeekKey();
+  const cur=DB.weeklyBase;
+  if(!force && cur && cur.weekKey===weekKey) return false; // 이미 이번 주 베이스 있음 → 유지
+  // 새 주 시작 or force=true → 현재 companies를 기준 스냅으로 고정
+  DB.weeklyBase={
+    snapshot:DB.companies.map(c=>({id:c.id,업체명:c.업체명,타겟제품:c.타겟제품,구분:c.구분,RM:c.RM,SO:c.SO,_stageNum:c._stageNum,진행단계:c.진행단계,방문미팅:c.방문미팅||'',진행현황:c.진행현황,계약목표:c.계약목표,기대실적:c.기대실적,pricing_type:c.pricing_type,pricing_amount:c.pricing_amount,_subProd:c._subProd})),
+    savedAt:new Date().toISOString(),
+    weekKey
+  };
+  // localStorage 즉시 저장
+  try{ localStorage.setItem(KEYS.weeklyBase,JSON.stringify(DB.weeklyBase)); }catch(e){}
+  // Firebase 저장
+  if(window._db){
+    const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
+    _db.ref('db/weeklyBase').set(_clean(DB.weeklyBase)).catch(e=>console.warn('FB weeklyBase save',e));
+  }
+  return true; // 갱신됨
+}
+
 // Firebase 배열→객체 변환 전역 함수
 function _fbToArrGlobal(v){
   if(!v) return v;
@@ -1127,7 +1162,7 @@ const PRICING_MIN_BY_CAT = {};
 // =====================================================
 // DATA LAYER (localStorage)
 // =====================================================
-const KEYS = {companies:'tfr_cos',history:'tfr_hist',pricingOverride:'tfr_price',settings:'tfr_cfg',pricingExcel:'tfr_pxl'};
+const KEYS = {companies:'tfr_cos',history:'tfr_hist',pricingOverride:'tfr_price',settings:'tfr_cfg',pricingExcel:'tfr_pxl',weeklyBase:'tfr_wbase'};
 
 // ── 업체 금액 데이터 하드코딩 (2026.05.26 기준) ──
 // 키 구조: "업체명|타겟제품|비고"
@@ -1398,7 +1433,8 @@ let DB = {
   history: [],
   pricingOverride: {},
   pricingExcel: [],
-  settings: {theme:'dark', lastUpload:null, isAdmin:false}
+  settings: {theme:'dark', lastUpload:null, isAdmin:false},
+  weeklyBase: null  // { snapshot, savedAt, weekKey } — 주간 비교 고정 기준 (Weekly Anchor)
 };
 
 function loadDB(){
@@ -1408,6 +1444,7 @@ function loadDB(){
     DB.history=JSON.parse(localStorage.getItem(KEYS.history)||'[]');
     DB.pricingOverride=JSON.parse(localStorage.getItem(KEYS.pricingOverride)||'{}');
     DB.pricingExcel=JSON.parse(localStorage.getItem(KEYS.pricingExcel)||'[]');
+    DB.weeklyBase=JSON.parse(localStorage.getItem(KEYS.weeklyBase)||'null');
     const cfg=JSON.parse(localStorage.getItem(KEYS.settings)||'{}');
     DB.settings={...DB.settings,...cfg};
     DB.settings.isAdmin=false;
@@ -1421,11 +1458,11 @@ async function loadDBFromFirebase(){
   }
   try{
     showLoading('Firebase 데이터 로딩 중...');
-    const [cos,hist,po,px,cfg,hc,cf,cm]=await Promise.all([
+    const [cos,hist,po,px,cfg,hc,cf,cm,wb]=await Promise.all([
       FB.get('db/companies'),FB.get('db/history'),
       FB.get('db/pricingOverride'),FB.get('db/pricingExcel'),
       FB.get('db/settings'),FB.get('db/hcAdmin'),FB.get('db/cfAdmin'),
-      FB.get('db/crediviewMass'),
+      FB.get('db/crediviewMass'),FB.get('db/weeklyBase'),
     ]);
     // Firebase는 배열을 객체로 저장 → 재귀적으로 배열 복원
     function _fbToArr(v){
@@ -1446,6 +1483,7 @@ async function loadDBFromFirebase(){
     DB.history=_fbToArr(hist)||[];
     DB.pricingOverride=po||{};
     DB.pricingExcel=_fbToArr(px)||[];
+    DB.weeklyBase=wb?_fbToArr(wb):null;
     if(cfg){DB.settings={...DB.settings,...cfg};DB.settings.isAdmin=false;}
     if(hc) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(hc)));
     if(cf) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(cf)));
@@ -1454,6 +1492,10 @@ async function loadDBFromFirebase(){
     localStorage.setItem(KEYS.history,JSON.stringify(DB.history));
     localStorage.setItem(KEYS.pricingOverride,JSON.stringify(DB.pricingOverride));
     localStorage.setItem(KEYS.pricingExcel,JSON.stringify(DB.pricingExcel));
+    if(DB.weeklyBase) localStorage.setItem(KEYS.weeklyBase,JSON.stringify(DB.weeklyBase));
+    // 새 주 시작 여부 체크 → 필요 시 weeklyBase 자동 갱신
+    const _wbRefreshed=refreshWeeklyBase(false);
+    if(_wbRefreshed) console.log('[WeeklyBase] 새 주 감지 → 자동 갱신 완료');
     hideLoading();
     migrateHCNames(); migrateStatusNewlines();
     renderAll(); renderCommonRev(); renderRMSummary();
@@ -1469,12 +1511,14 @@ async function loadDBFromFirebase(){
       DB.history=_fbToArr(d.history)||[];
       DB.pricingOverride=d.pricingOverride||{};
       DB.pricingExcel=_fbToArr(d.pricingExcel)||[];
+      if(d.weeklyBase) DB.weeklyBase=_fbToArr(d.weeklyBase);
       if(d.hcAdmin) localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(d.hcAdmin)));
       if(d.cfAdmin) localStorage.setItem(CF_ADMIN_KEY,JSON.stringify(_fbToArrGlobal(d.cfAdmin)));
       localStorage.setItem(KEYS.companies,JSON.stringify(DB.companies));
       localStorage.setItem(KEYS.history,JSON.stringify(DB.history));
       localStorage.setItem(KEYS.pricingOverride,JSON.stringify(DB.pricingOverride));
       localStorage.setItem(KEYS.pricingExcel,JSON.stringify(DB.pricingExcel));
+      if(DB.weeklyBase) localStorage.setItem(KEYS.weeklyBase,JSON.stringify(DB.weeklyBase));
       renderAll(); renderCommonRev(); renderRMSummary();
       updateUploadHistory();
       showToast('🔄 다른 기기에서 업데이트됨','ok',4000);
@@ -1495,6 +1539,7 @@ function saveDB(){
     try{ localStorage.setItem(KEYS.history,JSON.stringify(DB.history)); }catch(e2){} }
   try{ localStorage.setItem(KEYS.pricingOverride,JSON.stringify(DB.pricingOverride)); }catch(e){}
   try{ localStorage.setItem(KEYS.pricingExcel,JSON.stringify(DB.pricingExcel)); }catch(e){}
+  try{ if(DB.weeklyBase) localStorage.setItem(KEYS.weeklyBase,JSON.stringify(DB.weeklyBase)); }catch(e){}
   try{ localStorage.setItem(KEYS.settings,JSON.stringify({theme:DB.settings.theme,lastUpload:DB.settings.lastUpload})); }catch(e){}
   // 2. Firebase 저장 (공유)
   if(window.FB && window._db){
@@ -1506,6 +1551,7 @@ function saveDB(){
     _db.ref('db').set({
       companies:_clean(DB.companies), history:_clean(DB.history),
       pricingOverride:_clean(DB.pricingOverride), pricingExcel:_clean(DB.pricingExcel),
+      weeklyBase:DB.weeklyBase?_clean(DB.weeklyBase):null,
       settings:{theme:DB.settings.theme,lastUpload:DB.settings.lastUpload||null},
       hcAdmin:hcVal||null, cfAdmin:cfVal||null,
     }).then(()=>{_fbSaving=false;})
@@ -2595,6 +2641,12 @@ function migrateStatusNewlines(){
 }
 
 function commitSave(data){
+  // ── Weekly Anchor: 새 주이면 현재 companies를 기준 베이스로 고정 ──
+  // 업로드 직전 companies로 저장해야 "이번 주 시작 시점" 비교가 정확함
+  // (업로드로 companies가 바뀌기 전에 체크)
+  const _wbNew=refreshWeeklyBase(false);
+  if(_wbNew) updateUploadHistory(); // 베이스 갱신 시 이력 UI 즉시 반영
+
   // Save snapshot to history before update
   DB.history.push({
     date:new Date().toISOString(),
@@ -2693,9 +2745,10 @@ function renderKPIs(){
   if(pipeMeta) pipeMeta.textContent=`총 ${pipeline}건 파이프라인`;
   document.getElementById('kpi-confirmed').innerHTML=`${confirmedCoCount}<span class="unit">업체</span>`;
   document.getElementById('kpi-confirmed-amt').textContent='';
-  // 이번주 활동: 지난주 대비 delta만 표시
-  // KPI 이번주 활동: 7일 이내 + 올해 (상세 팝업과 동일 — delta 비교 없음)
-  const prevSnap4kpi = DB.history.length>0?DB.history[DB.history.length-1].snapshot:[];
+  // 이번주 활동: weeklyBase(주간 고정 기준 스냅) 대비 delta 표시
+  // KPI 이번주 활동: 7일 이내 + 올해 날짜 기준 (Sales활동은 날짜태그 기반)
+  const _wb=getWeeklyBase();
+  const prevSnap4kpi = _wb?(_wb.snapshot||[]):[];
   const kpiNow=new Date(); const kpiY=kpiNow.getFullYear(),kpiM=kpiNow.getMonth()+1,kpiD=kpiNow.getDate();
   const {thisStart:kpiCutoff, thisEnd:kpiCutoffEnd} = getWeekRange(); // 이번주 화~월
   function kpiInferYear(mm,dd){
@@ -2723,9 +2776,9 @@ function renderKPIs(){
       }
     }
   }
-  // 신규업체 + 파이프라인 변경 합산
-  const kpiPrevSnap=DB.history.length>0?DB.history[DB.history.length-1].snapshot:[];
-  const hasPrevKpi=kpiPrevSnap.length>0;
+  // 신규업체 + 파이프라인 변경: weeklyBase 기준 비교
+  const kpiPrevSnap=prevSnap4kpi; // 위에서 이미 weeklyBase 기반으로 설정됨
+  const hasPrevKpi=_wb!=null; // weeklyBase가 있어야 비교 가능
   let newCoCount=0, pipeChangeCount=0;
   if(hasPrevKpi){
     // 신규업체: 이전 스냅샷에 없는 업체명
@@ -2820,8 +2873,11 @@ function openActDetailByIdx(idx){
 
 function openWeeklyActivityDetail(){
   const cos=DB.companies;
-  const prevSnap=DB.history.length>0?DB.history[DB.history.length-1].snapshot:[];
-  const hasPrev=DB.history.length>0;
+  // ── Weekly Anchor: 주간 고정 기준 스냅으로 비교 ──
+  // 업로드를 몇 번 덮어써도 weeklyBase는 이번 주 첫 접속/업로드 시점으로 고정됨
+  const _wbWk=getWeeklyBase();
+  const prevSnap=_wbWk?(_wbWk.snapshot||[]):[];
+  const hasPrev=_wbWk!=null;
 
   // 연도 추론 헬퍼
   const now=new Date();
@@ -3741,7 +3797,8 @@ function renderRMSummary(){
 
 function renderRMCards(){
   const cos=getEffectiveCompanies(); const el=document.getElementById('rmCards');
-  const prev=(DB.history.length>0)?DB.history[DB.history.length-1].snapshot:[];
+  const _wbRm=getWeeklyBase();
+  const prev=_wbRm?(_wbRm.snapshot||[]):[];
   const avC=['av-blue','av-purple','av-teal','av-blue','av-purple','av-teal','av-blue'];
   function makeCard(p,role,i){
     const my=cos.filter(c=>c.RM===p||c.SO===p);
@@ -4823,47 +4880,87 @@ let _pendingRollbackIdx=null;
 
 function updateUploadHistory(){
   const el=document.getElementById('uploadHistory');
+
+  // ── Weekly Anchor 상태 배너 ──
+  const _wbDisp=getWeeklyBase();
+  const weekKey=getWeekKey();
+  let wbBanner='';
+  if(_wbDisp && _wbDisp.weekKey===weekKey){
+    const wbDate=new Date(_wbDisp.savedAt);
+    const wbStr=wbDate.toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})+' '+wbDate.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    wbBanner=`<div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:8px 11px;margin-bottom:8px;font-size:11px">
+      <div style="font-weight:700;color:#10b981;margin-bottom:2px">📌 이번 주 비교 기준</div>
+      <div style="color:var(--t2)">${wbStr} 스냅 · 업체 ${(_wbDisp.snapshot||[]).length}건</div>
+      <div style="color:var(--t2);font-size:10px;margin-top:2px">업로드를 덮어써도 이 기준은 유지됩니다</div>
+    </div>`;
+  } else {
+    wbBanner=`<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:8px 11px;margin-bottom:8px;font-size:11px">
+      <div style="font-weight:700;color:var(--warning);margin-bottom:2px">⚠️ 이번 주 비교 기준 없음</div>
+      <div style="color:var(--t2)">첫 업로드 시 자동으로 기준이 설정됩니다</div>
+    </div>`;
+  }
+
+  // ── 현재 상태를 가상 맨 위 항목으로 렌더링 ──
+  // history는 항상 "직전 스냅"을 저장하는 구조이므로,
+  // 실제 현재 companies는 history 배열 밖에 존재.
+  // → 현재 상태를 별도 "현재" 뱃지 항목으로 맨 위에 표시하고,
+  //   history 전체는 모두 롤백 가능 항목으로 표시.
+  const hasCos=DB.companies.length>0;
+  const nowStr=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})+' '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const curRow=`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:8px;margin-bottom:8px;font-size:12px;cursor:default">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px">
+        <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:10px;font-weight:700">현재</span>
+        <span style="color:var(--a2);font-weight:600">최신</span>
+        <span style="color:var(--t1);font-size:11px">현재 상태</span>
+      </div>
+      <div style="color:var(--t2);font-size:10px">${nowStr}</div>
+      <div style="color:var(--t2);font-size:10px;margin-top:2px">업체 ${DB.companies.length}건 · 프라이싱 ${DB.pricingExcel.length}건</div>
+    </div>
+  </div>`;
+
   if(!Array.isArray(DB.history)||!DB.history.length){
-    el.innerHTML='<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:24px">📂</div><div class="empty-txt" style="font-size:12px">업로드 이력 없음</div></div>';
+    el.innerHTML=wbBanner+curRow+'<div class="empty" style="padding:12px"><div class="empty-txt" style="font-size:11px">롤백 가능한 이력 없음</div></div>';
     return;
   }
-  const latestIdx=DB.history.length-1;
-  el.innerHTML=[...DB.history].reverse().map((h,ri)=>{
+  const histRows=[...DB.history].reverse().map((h,ri)=>{
     const realIdx=DB.history.length-1-ri;
     const d=new Date(h.date);
     const dStr=d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})+' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    const isCur=realIdx===latestIdx;
     const isFirst=h.isFirst||!h.snapshot||!Array.isArray(h.snapshot)||h.snapshot.length===0;
-    const isAutoSave=(h.file||'[]').startsWith('[롤백');
+    const isAutoSave=(h.file||'').startsWith('[롤백');
     const coCount=Array.isArray(h.snapshot)?h.snapshot.length:0;
     const pxlCount=(h.pricingExcel||[]).length;
-    const countLabel=isFirst?'최초 업로드':`업체 ${coCount}건 · 프라이싱 ${pxlCount}건`;
-    return `<div onclick="rollbackToHistory(${realIdx})" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:${isCur?'rgba(59,130,246,0.08)':' var(--bg2)'};border:1px solid ${isCur?'rgba(59,130,246,0.3)':' var(--border)'};border-radius:8px;margin-bottom:8px;font-size:12px;cursor:${isCur?'default':'pointer'}" onmouseenter="if(!${isCur})this.style.borderColor='rgba(59,130,246,.4)'" onmouseleave="if(!${isCur})this.style.borderColor='var(--border)'">
+    const countLabel=isFirst?'최초 업로드 전':  `업체 ${coCount}건 · 프라이싱 ${pxlCount}건`;
+    return `<div onclick="rollbackToHistory(${realIdx})" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:12px;cursor:pointer" onmouseenter="this.style.borderColor='rgba(59,130,246,.4)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px">
-          ${isCur?'<span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:10px;font-weight:700">현재</span>':'<span style="font-size:9px;background:var(--bg3);color:var(--t2);padding:1px 6px;border-radius:10px">↩ 클릭하여 롤백</span>'}
+          <span style="font-size:9px;background:var(--bg3);color:var(--t2);padding:1px 6px;border-radius:10px">↩ 클릭하여 롤백</span>
           ${isFirst?'<span style="font-size:9px;background:rgba(16,185,129,.2);color:var(--success);padding:1px 6px;border-radius:10px;font-weight:700">최초</span>':''}
           ${isAutoSave?'<span style="font-size:9px;background:rgba(245,158,11,.15);color:var(--warning);padding:1px 6px;border-radius:10px">자동저장</span>':''}
           <span style="color:var(--a2);font-weight:600">#${realIdx+1}</span>
           <span style="color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;font-size:11px">${esc(h.file||'파일명 없음')}</span>
         </div>
-        <div style="color:var(--t2);font-size:10px">${dStr}</div>
+        <div style="color:var(--t2);font-size:10px">${dStr} 기준 스냅샷</div>
         <div style="color:var(--t2);font-size:10px;margin-top:2px">${countLabel}</div>
       </div>
     </div>`;
   }).join('');
+  el.innerHTML=wbBanner+curRow+histRows;
 }
 
 function rollbackToHistory(idx){
-  if(idx===DB.history.length-1){showToast('이미 현재 상태입니다','warn');return;}
   const h=DB.history[idx];
-  if(!h){showToast('이력을 찾을 수 없습니다','err');return;}
+  if(!h||!Array.isArray(h.snapshot)){showToast('이력을 찾을 수 없습니다','err');return;}
   _pendingRollbackIdx=idx;
   const d=new Date(h.date);
   const dStr=d.toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})+' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
   const coCount=h.snapshot.length;
   const pxlCount=(h.pricingExcel||[]).length;
-  const isAutoSave=(h.file||'[]').startsWith('[롤백');
+  const isAutoSave=(h.file||'').startsWith('[롤백');
+  // 현재와의 차이 계산
+  const curCo=DB.companies.length, diffCo=coCount-curCo;
+  const diffStr=diffCo===0?'변동없음':diffCo>0?`+${diffCo}건`:`${diffCo}건`;
   document.getElementById('rollbackModalBody').innerHTML=`
     <div style="background:var(--bg2);border-radius:10px;padding:14px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -4871,19 +4968,23 @@ function rollbackToHistory(idx){
         <span style="font-size:12px;color:var(--t1)">${esc(h.file||'파일명 없음')}</span>
         ${isAutoSave?'<span style="font-size:9px;background:rgba(245,158,11,.15);color:var(--warning);padding:1px 6px;border-radius:8px">자동저장</span>':''}
       </div>
-      <div style="font-size:11px;color:var(--t2);margin-bottom:8px">📅 ${dStr}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px">📅 ${dStr} 기준 스냅샷</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
           <div style="font-size:18px;font-weight:800;font-family:Outfit,sans-serif;color:var(--t0)">${coCount}</div>
-          <div style="font-size:10px;color:var(--t2);margin-top:2px">업체 데이터</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">업체 수</div>
         </div>
         <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
           <div style="font-size:18px;font-weight:800;font-family:Outfit,sans-serif;color:var(--t0)">${pxlCount}</div>
-          <div style="font-size:10px;color:var(--t2);margin-top:2px">프라이싱 데이터</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">프라이싱</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:8px;text-align:center">
+          <div style="font-size:14px;font-weight:800;font-family:Outfit,sans-serif;color:${diffCo===0?'var(--t2)':diffCo>0?'var(--success)':'var(--danger)'}">${diffStr}</div>
+          <div style="font-size:10px;color:var(--t2);margin-top:2px">현재 대비</div>
         </div>
       </div>
     </div>
-    <div style="font-size:12px;color:var(--t1)">이 시점의 데이터로 <strong>업체 데이터 관리</strong>와 <strong>프라이싱 관리</strong> 전체가 복원됩니다.</div>`;
+    <div style="font-size:12px;color:var(--t1)">이 시점의 데이터로 <strong>업체 데이터</strong>와 <strong>프라이싱</strong>이 복원됩니다.<br><span style="color:var(--t2)">현재 상태는 자동 저장되어 다시 롤백할 수 있습니다.</span></div>`;
   openModal('rollbackModal');
 }
 
@@ -4891,20 +4992,30 @@ function doRollback(){
   const idx=_pendingRollbackIdx;
   if(idx===null||idx===undefined){closeModal('rollbackModal');return;}
   const h=DB.history[idx];
-  if(!h){showToast('이력을 찾을 수 없습니다','err');closeModal('rollbackModal');return;}
-  DB.history.push({date:new Date().toISOString(),snapshot:DB.companies.map(c=>({...c})),pricingExcel:DB.pricingExcel.map(r=>({...r})),pricingOverride:{...DB.pricingOverride},file:'[롤백 전 자동저장]'});
-  DB.companies=h.snapshot.map(co=>({...co,_stageNum:co._stageNum||normalizeStage(co.진행단계||'')}));
+  if(!h||!Array.isArray(h.snapshot)){showToast('이력을 찾을 수 없습니다','err');closeModal('rollbackModal');return;}
+  // 롤백 전 현재 상태를 자동저장 (원본 파일명 포함해서 추적 가능하게)
+  const autoLabel='[롤백전 자동저장 → #'+(idx+1)+' '+esc(h.file||'').slice(0,20)+']';
+  DB.history.push({
+    date:new Date().toISOString(),
+    snapshot:DB.companies.map(c=>({...c})),
+    pricingExcel:DB.pricingExcel.map(r=>({...r})),
+    pricingOverride:{...DB.pricingOverride},
+    file:autoLabel
+  });
+  // 롤백 대상 스냅으로 복원
+  DB.companies=h.snapshot.map(co=>({...co,_stageNum:co._stageNum!=null?co._stageNum:normalizeStage(co.진행단계||'')}));
   DB.pricingExcel=h.pricingExcel?h.pricingExcel.map(r=>({...r})):[];
   DB.pricingOverride=h.pricingOverride?{...h.pricingOverride}:{};
   DB.settings.lastUpload=h.date;
-  if(DB.history.length>15) DB.history.shift();
+  // 업로드·롤백 모두 동일 한도 10개로 통일
+  while(DB.history.length>10) DB.history.shift();
   saveDB();
   closeModal('rollbackModal');
   renderAll();
   renderAdminTable();
   renderPricingTable();
   updateUploadHistory();
-  showToast(`✅ #${idx+1} 시점 복원 — 업체 ${h.snapshot.length}건 · 프라이싱 ${(h.pricingExcel||[]).length}건`,'ok');
+  showToast(`✅ #${idx+1} 시점 복원 완료 — 업체 ${h.snapshot.length}건 · 프라이싱 ${(h.pricingExcel||[]).length}건`,'ok');
   _pendingRollbackIdx=null;
 }
 
