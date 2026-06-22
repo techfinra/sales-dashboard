@@ -597,7 +597,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
         </div>
       </div>
       <div class="card" style="margin-bottom:12px">
-        <div class="card-title">💚 신용등급확인서 (크레디뷰) Mass B2C</div>
+        <div class="card-title">💚 신용등급확인서 (크레디뷰) Mass MASS</div>
         <div class="card-sub" style="margin-bottom:12px">인식금액 수기 입력 → 공통 매출 현황에 반영</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <label style="font-size:12px;color:var(--t2);white-space:nowrap">인식금액 (원)</label>
@@ -737,6 +737,39 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
             </table>
           </div>
           <div style="font-size:10px;color:var(--t2);margin-top:6px" id="asgnCount"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 변경 이력 로그 (아코디언) -->
+  <div class="acc-sec">
+    <div class="acc-hdr" onclick="toggleAcc('accBodyLog')">
+      <span class="acc-title">📋 변경 이력 로그</span>
+      <span class="acc-arrow" id="accArrowLog">▼</span>
+    </div>
+    <div class="acc-body" id="accBodyLog">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="card-title" style="margin-bottom:2px">📋 변경 이력</div>
+            <div class="card-sub">목표금액·인식금액·크레디뷰 등 주요 데이터 수정 기록</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select class="fsel" id="logFilterType" onchange="renderChangeLog()">
+              <option value="">전체 유형</option>
+              <option value="금융중개서비스">금융중개서비스</option>
+              <option value="기업신용평가">기업신용평가</option>
+              <option value="경영진단보고서">경영진단보고서</option>
+              <option value="크레디뷰Mass">크레디뷰 Mass</option>
+              <option value="업체데이터">업체 데이터</option>
+              <option value="기타">기타</option>
+            </select>
+            <button class="btn btn-s btn-sm" onclick="renderChangeLog()">🔄 새로고침</button>
+          </div>
+        </div>
+        <div id="changeLogContent">
+          <div style="text-align:center;padding:24px;color:var(--t2);font-size:13px">아코디언을 열면 자동으로 불러옵니다.</div>
         </div>
       </div>
     </div>
@@ -1253,7 +1286,7 @@ const HC_ADMIN_DEFAULTS = {
   '금융중개서비스': [
     {id:'hc_수출입은행_금융중개',  업체명:'수출입은행(팩토링)', 타겟제품:'금융중개서비스',         RM:'이창희', SO:'박선정', 목표금액:36000000,  인식금액:36000000},
     {id:'hc_중진공_팩토링',        업체명:'중진공(팩토링)',      타겟제품:'금융중개서비스(팩토링)',   RM:'이창희', SO:'박선정', 목표금액:37000000,  인식금액:37000000},
-    {id:'hc_중진공_네트워크론',    업체명:'중진공(네트워크론)',  타겟제품:'금융중개서비스(네트워크론)',RM:'이창희', SO:'박선정', 목표금액:246000000, 인식금액:246000000},
+    {id:'hc_중진공_네트워크론',    업체명:'중진공(네트워크론)',  타겟제품:'금융중개서비스(네트워크론)',RM:'이창희', SO:'박선정', 목표금액:577000000, 인식금액:246000000},
   ],
   '기업신용평가': [
     {id:'hc_ce_이창희', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'이창희', SO:'박선정', 목표금액:100000000, 인식금액:0},
@@ -1322,9 +1355,24 @@ function updateHCField(el){
 }
 function saveHCAdmin(svc){
   if(!_hcAdminTemp) _hcAdminTemp=getHCAdminData();
+  const prevData=getHCAdminData();
   const all=getHCAdminData(); all[svc]=_hcAdminTemp[svc]||all[svc];
   localStorage.setItem(HC_ADMIN_KEY,JSON.stringify(all));
-  // Firebase 즉시 저장 (새로고침 후에도 유지)
+  // 변경사항 로그 기록
+  const prevRows=prevData[svc]||[];
+  const newRows=_hcAdminTemp[svc]||[];
+  for(let i=0;i<newRows.length;i++){
+    const nw=newRows[i], pv=prevRows[i]||{};
+    for(const f of ['목표금액','인식금액','RM','SO','업체명']){
+      if(pv[f]!==undefined && String(nw[f])!==String(pv[f])){
+        writeChangeLog(svc, `${nw.업체명||nw.id||('행'+i)} · ${f}`, pv[f], nw[f]);
+      }
+    }
+    if(prevRows[i]===undefined){
+      writeChangeLog(svc, `새 행 추가 · ${nw.업체명||nw.id||('행'+i)}`, '-', `목표:${fmtCommon(nw.목표금액||0)} / 인식:${fmtCommon(nw.인식금액||0)}`);
+    }
+  }
+  // Firebase 즉시 저장
   if(window._db){
     const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
     window._db.ref('db/hcAdmin').set(_clean(all))
@@ -1353,6 +1401,8 @@ function saveCrediviewMassFromInput(){
   if(!el) return;
   const v=parseInt(el.value)||0;
   if(v<=0){ showToast('⚠️ 올바른 금액을 입력해주세요','warn'); return; }
+  const prev=getCrediviewMass();
+  writeChangeLog('크레디뷰Mass','신용등급확인서 Mass 인식금액',prev,v);
   saveCrediviewMass(v);
 }
 function initCrediviewMassInput(){
@@ -3170,7 +3220,7 @@ function openKpiDetail(type){
         const prodBg={'DATA판매':'rgba(59,130,246,.1)','기업모니터링':'rgba(139,92,246,.1)','기업DB조회':'rgba(20,184,166,.1)','경영진단보고서':'rgba(245,158,11,.1)','크레디뷰':'rgba(16,185,129,.1)'}[prod]||'rgba(148,163,184,.1)';
         const prodColor={'DATA판매':'var(--a2)','기업모니터링':'#a78bfa','기업DB조회':'#2dd4bf','경영진단보고서':'var(--warning)','크레디뷰':'var(--success)'}[prod]||'var(--t2)';
         const rows=g.items.map(({co,p})=>{
-          if(co._isMass) return `<tr style="border-bottom:1px solid var(--border);background:rgba(52,211,153,.04)"><td style="padding:8px 10px;font-weight:600;color:var(--success)">${esc(co.업체명)}</td><td style="padding:8px 10px;color:var(--t2)" colspan="3">Mass (B2C)</td><td style="padding:8px 10px;text-align:right">—</td><td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success)">${fmtFloorEok(p.amount||0)}</td></tr>`;
+          if(co._isMass) return `<tr style="border-bottom:1px solid var(--border);background:rgba(52,211,153,.04)"><td style="padding:8px 10px;font-weight:600;color:var(--success)">${esc(co.업체명)}</td><td style="padding:8px 10px;color:var(--t2)" colspan="3">Mass (MASS)</td><td style="padding:8px 10px;text-align:right">—</td><td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success)">${fmtFloorEok(p.amount||0)}</td></tr>`;
           const plan=getPlanAmt(co);
           return `
           <tr style="border-bottom:1px solid var(--border)">
@@ -3518,14 +3568,14 @@ function openSvcDetail(svcKey){
   const massRow=massAmt>0
     ?`<div style="margin-top:12px;border:1px solid rgba(52,211,153,.3);border-radius:8px;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:rgba(52,211,153,.08)">
-          <span style="font-size:12px;font-weight:700;color:#34d399">Mass (B2C)</span>
+          <span style="font-size:12px;font-weight:700;color:#34d399">Mass (MASS)</span>
           <span style="font-size:11px;color:var(--t2)">직접 인식</span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr>${['항목','구분','인식금액'].map(h=>`<th style="padding:7px;text-align:${h==='인식금액'?'right':'left'};border-bottom:1px solid var(--border);color:var(--t2)">${h}</th>`).join('')}</tr></thead>
           <tbody><tr style="border-bottom:1px solid var(--border)">
             <td style="padding:7px;font-weight:600;color:var(--t0)">신용등급확인서 (크레디뷰)</td>
-            <td style="padding:7px;color:var(--t2)">Mass B2C</td>
+            <td style="padding:7px;color:var(--t2)">Mass MASS</td>
             <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:#34d399">${fmtFloorEok(massAmt)}</td>
           </tr></tbody>
         </table>
@@ -3749,7 +3799,7 @@ function renderCommonRev(){
     </div>
     <div class="common-rev-grid">
       ${catCard('금융중개서비스',hcPlan,hcTotal,hcSubRows(HC_COL),HC_COL)}
-      ${catCard('크레디뷰 Mass',crediPlan,crediMass,subItem('신용등급확인서 (B2C)',crediMass,CR_COL),CR_COL)}
+      ${catCard('크레디뷰 Mass',crediPlan,crediMass,subItem('신용등급확인서 (MASS)',crediMass,CR_COL),CR_COL)}
       ${catCard('경영진단보고서',edPlan,edActual,edSubRows(ED_COL),ED_COL)}
     </div>
   `;
@@ -4749,7 +4799,6 @@ function savePricing(){
   const amount=parseInt(document.getElementById('pm_amount').value)||0;
   const type=document.getElementById('pm_type').value;
 
-  // __excel__ 접두어: DB 미매칭 업체 — 이름으로 재매칭 시도
   if(id.startsWith('__excel__')){
     const [coName,prod]=id.replace('__excel__','').split('|');
     const matched=DB.companies.find(c=>{
@@ -4758,12 +4807,17 @@ function savePricing(){
       return cn===rn||cn.includes(rn)||rn.includes(cn);
     });
     if(matched){
+      const prev=DB.pricingOverride[matched.id];
+      writeChangeLog('업체데이터',`${matched.업체명} · 계약금액(${type})`,prev?prev.amount:'-',amount);
       DB.pricingOverride[matched.id]={amount,type};
       showToast(`✅ ${matched.업체명} 프라이싱 저장됨`,'ok');
     } else {
       showToast('DB 업체 미매칭 — 업체 데이터를 먼저 등록해주세요','warn');
     }
   } else {
+    const prev=DB.pricingOverride[id];
+    const co=DB.companies.find(c=>c.id===id);
+    writeChangeLog('업체데이터',`${co?co.업체명:id} · 계약금액(${type})`,prev?prev.amount:'-',amount);
     DB.pricingOverride[id]={amount,type};
     showToast('프라이싱 저장됨','ok');
   }
@@ -5206,8 +5260,95 @@ function toggleAcc(bodyId){
   const arrow=document.getElementById('accArrow'+n);
   const open=body.classList.toggle('open');
   if(arrow) arrow.style.transform=open?'rotate(180deg)':'';
-  // 업무분장 아코디언 열릴 때 초기화
   if(bodyId==='accBodyAsgn'&&open&&typeof initAssignment==='function') initAssignment();
+  if(bodyId==='accBodyLog'&&open) renderChangeLog();
+}
+
+// ═══════════════════════════════════════════════════════
+// 변경 이력 로그
+// ═══════════════════════════════════════════════════════
+const CHANGE_LOG_KEY='changeLog_v1';
+const CHANGE_LOG_MAX=200;
+
+function writeChangeLog(type, field, before, after){
+  if(String(before)===String(after)) return;
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const ts=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const fmt=v=>typeof v==='number'?fmtCommon(v):String(v);
+  const entry={ts, type, field, before:fmt(before), after:fmt(after)};
+  let logs=[];
+  try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
+  logs.unshift(entry);
+  if(logs.length>CHANGE_LOG_MAX) logs=logs.slice(0,CHANGE_LOG_MAX);
+  localStorage.setItem(CHANGE_LOG_KEY,JSON.stringify(logs));
+  if(window._db){
+    const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
+    window._db.ref('db/changeLog').set(_clean(logs)).catch(e=>console.warn('[ChangeLog] FB 저장 실패',e));
+  }
+}
+
+async function loadChangeLogFromDB(){
+  if(!window._db) return null;
+  try{
+    const snap=await window._db.ref('db/changeLog').get();
+    const val=snap.val();
+    if(Array.isArray(val)&&val.length>0){
+      localStorage.setItem(CHANGE_LOG_KEY,JSON.stringify(val));
+      return val;
+    }
+  }catch(e){}
+  return null;
+}
+
+function renderChangeLog(){
+  const el=document.getElementById('changeLogContent');
+  if(!el) return;
+  el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">🔄 불러오는 중...</div>`;
+  (async()=>{
+    await loadChangeLogFromDB();
+    let logs=[];
+    try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
+    const filterType=(document.getElementById('logFilterType')||{}).value||'';
+    if(filterType) logs=logs.filter(l=>l.type===filterType);
+    if(logs.length===0){
+      el.innerHTML=`<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">
+        <div style="font-size:28px;margin-bottom:8px">📋</div>
+        <div>아직 변경 이력이 없습니다.</div>
+        <div style="font-size:11px;margin-top:6px">목표금액·인식금액 등을 수정·저장하면 이곳에 기록됩니다.</div>
+      </div>`;
+      return;
+    }
+    const typeColor={'금융중개서비스':'#a78bfa','기업신용평가':'#60a5fa','경영진단보고서':'#34d399','크레디뷰Mass':'#22c55e','업체데이터':'#f59e0b','기타':'#94a3b8'};
+    const rows=logs.map((l,i)=>{
+      const col=typeColor[l.type]||'#94a3b8';
+      return `<tr style="${i%2===0?'background:var(--bg2)':''}">
+        <td style="padding:9px 12px;font-size:11px;color:var(--t2);white-space:nowrap;font-family:'Outfit',sans-serif">${l.ts||'-'}</td>
+        <td style="padding:9px 12px">
+          <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:${col}22;color:${col};white-space:nowrap">${l.type||'-'}</span>
+        </td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--t1);font-weight:500">${l.field||'-'}</td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--danger);text-align:right;white-space:nowrap;font-family:'Outfit',sans-serif">${l.before||'-'}</td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--t2);text-align:center">→</td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--success);text-align:right;white-space:nowrap;font-family:'Outfit',sans-serif;font-weight:700">${l.after||'-'}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML=`
+      <div style="font-size:11px;color:var(--t2);margin-bottom:8px">총 ${logs.length}건 (최근 ${CHANGE_LOG_MAX}건 보관)</div>
+      <div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border)">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg3)">
+            <th style="padding:9px 12px;text-align:left;color:var(--t2);font-size:10px;white-space:nowrap;font-weight:600">수정 일시</th>
+            <th style="padding:9px 12px;text-align:left;color:var(--t2);font-size:10px;white-space:nowrap;font-weight:600">유형</th>
+            <th style="padding:9px 12px;text-align:left;color:var(--t2);font-size:10px;font-weight:600">항목</th>
+            <th style="padding:9px 12px;text-align:right;color:var(--t2);font-size:10px;white-space:nowrap;font-weight:600">변경 전</th>
+            <th style="padding:9px 12px;text-align:center;color:var(--t2);font-size:10px"></th>
+            <th style="padding:9px 12px;text-align:right;color:var(--t2);font-size:10px;white-space:nowrap;font-weight:600">변경 후</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  })();
 }
 
 // ═══════════════════════════════════════════════════════
