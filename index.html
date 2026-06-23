@@ -1285,7 +1285,7 @@ const HC_ADMIN_DEFAULTS = {
   '금융중개서비스': [
     {id:'hc_수출입은행_금융중개',  업체명:'수출입은행(팩토링)', 타겟제품:'금융중개서비스',         RM:'이창희', SO:'박선정', 목표금액:36000000,  인식금액:36000000},
     {id:'hc_중진공_팩토링',        업체명:'중진공(팩토링)',      타겟제품:'금융중개서비스(팩토링)',   RM:'이창희', SO:'박선정', 목표금액:43000000,  인식금액:43000000},
-    {id:'hc_중진공_네트워크론',    업체명:'중진공(네트워크론)',  타겟제품:'금융중개서비스(네트워크론)',RM:'이창희', SO:'박선정', 목표금액:577000000, 인식금액:259000000},
+    {id:'hc_중진공_네트워크론',    업체명:'중진공(네트워크론)',  타겟제품:'금융중개서비스(네트워크론)',RM:'이창희', SO:'박선정', 목표금액:259000000, 인식금액:259000000},
   ],
   '기업신용평가': [
     {id:'hc_ce_이창희', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'이창희', SO:'박선정', 목표금액:100000000, 인식금액:0},
@@ -1331,7 +1331,7 @@ function rebuildHCCompanies(){
 const HC_HARDCODED_OVERRIDE = {
   'hc_수출입은행_금융중개': { 계획금액:36000000,  인식금액:36000000  },
   'hc_중진공_팩토링':       { 계획금액:43000000,  인식금액:43000000  },
-  'hc_중진공_네트워크론':   { 계획금액:577000000, 인식금액:259000000 },
+  'hc_중진공_네트워크론':   { 계획금액:259000000, 인식금액:259000000 },
 };
 const _origRebuildHCCompanies = rebuildHCCompanies;
 rebuildHCCompanies = function(){
@@ -3739,8 +3739,7 @@ function renderCommonRev(){
   if(!el) return;
   // 금융중개서비스: HC_ADMIN_DEFAULTS 기준 동적 계산
   const _hcRows=(getHCAdminData()['금융중개서비스']||[]);
-  const _hcPlanBase=_hcRows.reduce((s,r)=>s+(r.목표금액||0),0);
-  const hcPlan=_hcPlanBase+327000000; // ★ 하드코딩 추가 목표 3.27억 고정
+  const hcPlan=650000000; // ★ 하드코딩 고정 6.5억
   const hcTotal=_hcRows.reduce((s,r)=>s+(r.인식금액||0),0);
   const crediMass=getCrediviewMass();
   const crediPlan=1e9;
