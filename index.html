@@ -1328,6 +1328,23 @@ function rebuildHCCompanies(){
   }
 }
 
+// ── 금융중개 3개 항목 하드코딩 강제 고정 (Firebase/localStorage 값 무시) ──
+const HC_HARDCODED_OVERRIDE = {
+  'hc_수출입은행_금융중개': { 계획금액:36000000,  인식금액:36000000  },
+  'hc_중진공_팩토링':       { 계획금액:43000000,  인식금액:43000000  },
+  'hc_중진공_네트워크론':   { 계획금액:577000000, 인식금액:259000000 },
+};
+const _origRebuildHCCompanies = rebuildHCCompanies;
+rebuildHCCompanies = function(){
+  _origRebuildHCCompanies();
+  for(const [id, vals] of Object.entries(HC_HARDCODED_OVERRIDE)){
+    if(HARDCODED_FINANCIALS_LIVE[id]){
+      HARDCODED_FINANCIALS_LIVE[id].계획금액 = vals.계획금액;
+      HARDCODED_FINANCIALS_LIVE[id].인식금액 = vals.인식금액;
+    }
+  }
+};
+
 // getHCF를 LIVE 맵 우선으로 오버라이드
 const _origGetHCF = getHCF;
 function getHCF(co){
