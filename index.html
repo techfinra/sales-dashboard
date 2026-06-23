@@ -1165,8 +1165,7 @@ const TOTAL_PLAN = 48.07;
 const CREDIVIEW_MASS_DEFAULT = 181510000; // 크레디뷰 Mass 18,151만원 (2026.06 기준)
 const CREDIVIEW_ADMIN_KEY = 'crediviewMassAdmin_v1';
 function getCrediviewMass(){
-  try{ const v=localStorage.getItem(CREDIVIEW_ADMIN_KEY); return v?parseInt(v):CREDIVIEW_MASS_DEFAULT; }
-  catch(e){ return CREDIVIEW_MASS_DEFAULT; }
+  return CREDIVIEW_MASS_DEFAULT; // ★ 하드코딩 고정 — Firebase/localStorage 무시
 }
 function saveCrediviewMass(v){
   try{
