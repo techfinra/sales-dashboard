@@ -3739,7 +3739,8 @@ function renderCommonRev(){
   if(!el) return;
   // 금융중개서비스: HC_ADMIN_DEFAULTS 기준 동적 계산
   const _hcRows=(getHCAdminData()['금융중개서비스']||[]);
-  const hcPlan=_hcRows.reduce((s,r)=>s+(r.목표금액||0),0);
+  const _hcPlanBase=_hcRows.reduce((s,r)=>s+(r.목표금액||0),0);
+  const hcPlan=_hcPlanBase+327000000; // ★ 하드코딩 추가 목표 3.27억 고정
   const hcTotal=_hcRows.reduce((s,r)=>s+(r.인식금액||0),0);
   const crediMass=getCrediviewMass();
   const crediPlan=1e9;
