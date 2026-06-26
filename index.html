@@ -4103,17 +4103,22 @@ function renderRMCards(){
     const rmNow=new Date(); const rmCurY=rmNow.getFullYear(),rmCurM=rmNow.getMonth()+1,rmCurD=rmNow.getDate();
     const _wr=getWeekRange();
     const rmCutoff=_wr.thisStart;
+    // ★ 팝업과 동일한 inferYr (now 기준 60일 초과 미래면 작년)
     function rmInferYear(mm,dd){
       const d=new Date(rmCurY,mm-1,dd);
-      const diffDays=(d-new Date(rmCurY,rmCurM-1,rmCurD))/86400000;
-      return diffDays>60?rmCurY-1:rmCurY;
+      return (d-rmNow)/86400000>60?rmCurY-1:rmCurY;
     }
-    // 금주: 오늘 기준 7일 이내 / 전주: 오늘 기준 8~14일 전 (팝업과 동일 기준)
     const rmC14=_wr.lastStart;
+    // ★ 팝업과 동일: RM/SO 담당 + 방문미팅 참석자 포함
     function makeActSetRange(snap, person, fromDate, toDate){
       const s=new Set();
-      const _today2=new Date(); _today2.setHours(23,59,59,999); // 오늘 상한선
-      for(const co of snap.filter(c=>c.RM===person||c.SO===person)){
+      const _today2=new Date(); _today2.setHours(23,59,59,999);
+      const snapFiltered=snap.filter(c=>{
+        if(c.RM===person||c.SO===person) return true;
+        const _v=parseVisitMeetings(c.방문미팅||'');
+        return _v.some(v=>v.names.includes(person));
+      });
+      for(const co of snapFiltered){
         const re3=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m3;
         while((m3=re3.exec(co.진행현황||''))!==null){
           const mm2=parseInt(m3[1]),dd2=parseInt(m3[2]);
