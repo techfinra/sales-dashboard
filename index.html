@@ -436,6 +436,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
   <nav class="nav">
     <button class="nav-btn on" onclick="switchTab('dash')">대시보드</button>
     <button class="nav-btn" onclick="checkAdmin('admin')">관리자</button>
+    <button class="nav-btn" onclick="checkAdmin('internal')">내부관리</button>
   </nav>
   <div class="hdr-right">
     <div class="date-badge" id="hdrDate">—</div>
@@ -794,6 +795,24 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
     </div>
   </div>
 </div><!-- /admin tab -->
+
+<!-- ===== 내부관리 탭 ===== -->
+<div class="tab" id="tab-internal">
+  <div style="padding:16px 20px">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:12px">타겟제품별 현황
+        <span style="font-size:10px;font-weight:400;color:var(--t2);margin-left:6px">파이프라인 전체 + 계약완료 기준</span>
+      </div>
+      <div id="internalProductChart" style="width:100%"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">타겟제품별 금액 상세
+        <span style="font-size:10px;font-weight:400;color:var(--t2);margin-left:6px">계약완료(5단계) 인식금액 기준</span>
+      </div>
+      <div id="internalProductTable" style="overflow-x:auto"></div>
+    </div>
+  </div>
+</div><!-- /internal tab -->
 
 <!-- ===== LOGIN MODAL ===== -->
 <div class="overlay" id="loginModal">
@@ -3382,7 +3401,7 @@ function renderServiceProgress(){
   if(!cos.length){el.innerHTML='<div class="empty" style="padding:12px"><div class="empty-txt" style="font-size:12px">데이터 없음</div></div>';return;}
 
   const fA=v=>!v?'0':(Math.floor(v/1e6)/100).toFixed(2)+'억';
-  const fB=v=>!v?'0.00억원':(Math.floor(v/1e6)/100).toFixed(2)+'억원';
+  const fB=v=>!v?'0만원':v<1e6?Math.round(v/1e4)+'만원':(Math.floor(v/1e6)/100).toFixed(2)+'억원';
   function bCol(p){return p>=80?'#22c55e':p>=50?'#3b82f6':p>=20?'#f59e0b':'#64748b';}
 
   // 계약완료(5단계) 인식매출 집계
@@ -3732,6 +3751,117 @@ function togglePipeAcc(n){
 function closePipeDetail(){
   const el=document.getElementById('pipeDetailOverlay');
   if(el) el.remove();
+}
+
+// =====================================================
+// 내부관리 탭 — 타겟제품별 현황
+// =====================================================
+function renderInternalTab(){
+  const chartEl = document.getElementById('internalProductChart');
+  const tableEl = document.getElementById('internalProductTable');
+  if(!chartEl || !tableEl) return;
+
+  const cos = getEffectiveCompanies();
+
+  // 타겟제품 정규화 (normalizeProduct 활용)
+  function getProd(co){ return normalizeProduct(co.타겟제품||'')||(co.타겟제품||'기타'); }
+
+  // 전체 파이프라인 집계 (전 단계)
+  const allProds = {};
+  for(const co of cos){
+    const k = getProd(co);
+    if(!allProds[k]) allProds[k]={total:0, byStage:{}, insik:0, cnt:0};
+    allProds[k].cnt++;
+    allProds[k].byStage[co._stageNum||0] = (allProds[k].byStage[co._stageNum||0]||0)+1;
+    if(co._stageNum===5){
+      const p = getPricing(co);
+      allProds[k].insik += (p.amount||0);
+    }
+  }
+
+  // HC(금융중개, 기업신용평가) 인식 금액 추가
+  const hcData = getHCAdminData();
+  for(const [cat, rows] of Object.entries(hcData)){
+    const k = normalizeProduct(cat)||cat;
+    if(!allProds[k]) allProds[k]={total:0,byStage:{},insik:0,cnt:0};
+    for(const r of rows){
+      allProds[k].insik += (r.인식금액||0);
+      allProds[k].cnt++;
+    }
+  }
+  // 크레디뷰 Mass 추가
+  if(!allProds['크레디뷰']) allProds['크레디뷰']={total:0,byStage:{},insik:0,cnt:0};
+  allProds['크레디뷰'].insik += getCrediviewMass();
+
+  // 정렬: 인식금액 내림차순
+  const sorted = Object.entries(allProds).sort((a,b)=>b[1].insik-a[1].insik);
+
+  const maxInsik = Math.max(...sorted.map(([,v])=>v.insik), 1);
+
+  // 색상 팔레트
+  const palette = ['#60a5fa','#34d399','#a78bfa','#fb923c','#f472b6','#38bdf8','#facc15','#4ade80','#c084fc','#f87171'];
+
+  // 차트 HTML (가로 막대)
+  const fmtAmt = v => !v ? '0' : v < 1e6 ? Math.round(v/1e4)+'만원' : (Math.floor(v/1e6)/100).toFixed(2)+'억원';
+
+  let chartHtml = `<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">`;
+  sorted.forEach(([prod, data], i) => {
+    const col = palette[i % palette.length];
+    const pct = maxInsik > 0 ? Math.min(100, data.insik / maxInsik * 100) : 0;
+    const cntAll = data.cnt;
+    const cntDone = data.byStage[5]||0;
+    chartHtml += `
+    <div style="display:grid;grid-template-columns:130px 1fr 90px;align-items:center;gap:10px">
+      <div style="font-size:12px;font-weight:600;color:var(--t0);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${prod}">${prod}</div>
+      <div style="background:var(--bg2);border-radius:5px;height:20px;position:relative;overflow:hidden">
+        <div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:5px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+          ${pct>15?`<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9)">${fmtAmt(data.insik)}</span>`:''}
+        </div>
+        ${pct<=15&&data.insik>0?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--t0)">${fmtAmt(data.insik)}</span>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--t2);white-space:nowrap">전체 ${cntAll}건</div>
+    </div>`;
+  });
+  chartHtml += `</div>`;
+  chartEl.innerHTML = chartHtml;
+
+  // 테이블 HTML
+  let tblHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border)">
+        <th style="padding:8px 10px;text-align:left;color:var(--t2);font-weight:600">타겟제품</th>
+        <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">전체 건수</th>
+        <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">계약완료</th>
+        <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">인식금액</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  let totalCnt=0, totalDone=0, totalInsik=0;
+  sorted.forEach(([prod, data], i) => {
+    const col = palette[i % palette.length];
+    const cntDone = data.byStage[5]||0;
+    totalCnt += data.cnt; totalDone += cntDone; totalInsik += data.insik;
+    tblHtml += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 10px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>
+        <span style="font-weight:600;color:var(--t0)">${prod}</span>
+      </td>
+      <td style="padding:8px 10px;text-align:right;color:var(--t1)">${data.cnt}건</td>
+      <td style="padding:8px 10px;text-align:right;color:var(--success)">${cntDone}건</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${fmtAmt(data.insik)}</td>
+    </tr>`;
+  });
+
+  tblHtml += `<tr style="border-top:2px solid var(--border);background:var(--bg2)">
+    <td style="padding:8px 10px;font-weight:700;color:var(--t0)">합계</td>
+    <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--t0)">${totalCnt}건</td>
+    <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--success)">${totalDone}건</td>
+    <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:800;color:var(--a2)">${fmtAmt(totalInsik)}</td>
+  </tr>`;
+
+  tblHtml += `</tbody></table>`;
+  tableEl.innerHTML = tblHtml;
 }
 
 function renderCommonRev(){
@@ -5122,13 +5252,15 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('tab-'+name).classList.add('on');
-  const idx={'dash':0,'admin':1}[name];
+  const idx={'dash':0,'admin':1,'internal':2}[name];
   document.querySelectorAll('.nav-btn')[idx].classList.add('on');
   if(name==='admin'){
     renderAdminTable(); renderPricingTable(); updateUploadHistory(); updateFilterOptions();
     if(typeof initAssignment==='function') initAssignment();
     const pSt=document.getElementById('pricingUploadStatus');
     if(pSt&&DB.pricingExcel.length) pSt.innerHTML=`<span style='color:var(--success)'>✅ ${DB.pricingExcel.length}건 로드됨 (최근 업로드)</span>`;
+  } else if(name==='internal'){
+    renderInternalTab();
   } else if(name==='dash'){
     // 대시보드 탭 복귀: 차트 강제 재빌드 (canvas 가시 상태에서 실행)
     setTimeout(()=>{ if(charts.rmStage){charts.rmStage.destroy();charts.rmStage=null;} renderCharts(); },50);
