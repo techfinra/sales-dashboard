@@ -3766,37 +3766,39 @@ function renderInternalTab(){
   // 타겟제품 정규화 (normalizeProduct 활용)
   function getProd(co){ return normalizeProduct(co.타겟제품||'')||(co.타겟제품||'기타'); }
 
-  // 전체 파이프라인 집계 (전 단계)
+  // 전체 파이프라인 집계 (전 단계) — 계약금액은 단계 무관 전체 합산
   const allProds = {};
   for(const co of cos){
     const k = getProd(co);
-    if(!allProds[k]) allProds[k]={total:0, byStage:{}, insik:0, cnt:0};
+    if(!allProds[k]) allProds[k]={byStage:{}, insik:0, contract:0, cnt:0};
     allProds[k].cnt++;
     allProds[k].byStage[co._stageNum||0] = (allProds[k].byStage[co._stageNum||0]||0)+1;
-    if(co._stageNum===5){
-      const p = getPricing(co);
-      allProds[k].insik += (p.amount||0);
-    }
+    const p = getPricing(co);
+    const amt = p.amount||0;
+    allProds[k].contract += amt; // 전 단계 계약금액 합산
+    if(co._stageNum===5) allProds[k].insik += amt; // 인식금액(5단계만)
   }
 
-  // HC(금융중개, 기업신용평가) 인식 금액 추가
+  // HC(금융중개, 기업신용평가) — 계약금액/인식금액 모두 목표금액/인식금액으로
   const hcData = getHCAdminData();
   for(const [cat, rows] of Object.entries(hcData)){
     const k = normalizeProduct(cat)||cat;
-    if(!allProds[k]) allProds[k]={total:0,byStage:{},insik:0,cnt:0};
+    if(!allProds[k]) allProds[k]={byStage:{},insik:0,contract:0,cnt:0};
     for(const r of rows){
-      allProds[k].insik += (r.인식금액||0);
+      allProds[k].contract += (r.목표금액||0);
+      allProds[k].insik    += (r.인식금액||0);
       allProds[k].cnt++;
     }
   }
   // 크레디뷰 Mass 추가
-  if(!allProds['크레디뷰']) allProds['크레디뷰']={total:0,byStage:{},insik:0,cnt:0};
-  allProds['크레디뷰'].insik += getCrediviewMass();
+  if(!allProds['크레디뷰']) allProds['크레디뷰']={byStage:{},insik:0,contract:0,cnt:0};
+  allProds['크레디뷰'].insik    += getCrediviewMass();
+  allProds['크레디뷰'].contract += getCrediviewMass();
 
-  // 정렬: 인식금액 내림차순
-  const sorted = Object.entries(allProds).sort((a,b)=>b[1].insik-a[1].insik);
+  // 정렬: 계약금액 내림차순
+  const sorted = Object.entries(allProds).sort((a,b)=>b[1].contract-a[1].contract);
 
-  const maxInsik = Math.max(...sorted.map(([,v])=>v.insik), 1);
+  const maxInsik = Math.max(...sorted.map(([,v])=>v.contract), 1);
 
   // 색상 팔레트
   const palette = ['#60a5fa','#34d399','#a78bfa','#fb923c','#f472b6','#38bdf8','#facc15','#4ade80','#c084fc','#f87171'];
@@ -3807,7 +3809,7 @@ function renderInternalTab(){
   let chartHtml = `<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">`;
   sorted.forEach(([prod, data], i) => {
     const col = palette[i % palette.length];
-    const pct = maxInsik > 0 ? Math.min(100, data.insik / maxInsik * 100) : 0;
+    const pct = maxInsik > 0 ? Math.min(100, data.contract / maxInsik * 100) : 0;
     const cntAll = data.cnt;
     const cntDone = data.byStage[5]||0;
     chartHtml += `
@@ -3815,9 +3817,9 @@ function renderInternalTab(){
       <div style="font-size:12px;font-weight:600;color:var(--t0);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${prod}">${prod}</div>
       <div style="background:var(--bg2);border-radius:5px;height:20px;position:relative;overflow:hidden">
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:5px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
-          ${pct>15?`<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9)">${fmtAmt(data.insik)}</span>`:''}
+          ${pct>15?`<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.9)">${fmtAmt(data.contract)}</span>`:''}
         </div>
-        ${pct<=15&&data.insik>0?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--t0)">${fmtAmt(data.insik)}</span>`:''}
+        ${pct<=15&&data.contract>0?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--t0)">${fmtAmt(data.contract)}</span>`:''}
       </div>
       <div style="font-size:11px;color:var(--t2);white-space:nowrap">전체 ${cntAll}건</div>
     </div>`;
@@ -3832,16 +3834,16 @@ function renderInternalTab(){
         <th style="padding:8px 10px;text-align:left;color:var(--t2);font-weight:600">타겟제품</th>
         <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">전체 건수</th>
         <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">계약완료</th>
-        <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">인식금액</th>
+        <th style="padding:8px 10px;text-align:right;color:var(--t2);font-weight:600">계약금액(전체)</th>
       </tr>
     </thead>
     <tbody>`;
 
-  let totalCnt=0, totalDone=0, totalInsik=0;
+  let totalCnt=0, totalDone=0, totalContract=0;
   sorted.forEach(([prod, data], i) => {
     const col = palette[i % palette.length];
     const cntDone = data.byStage[5]||0;
-    totalCnt += data.cnt; totalDone += cntDone; totalInsik += data.insik;
+    totalCnt += data.cnt; totalDone += cntDone; totalContract += data.contract;
     tblHtml += `<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:8px 10px">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>
@@ -3849,7 +3851,7 @@ function renderInternalTab(){
       </td>
       <td style="padding:8px 10px;text-align:right;color:var(--t1)">${data.cnt}건</td>
       <td style="padding:8px 10px;text-align:right;color:var(--success)">${cntDone}건</td>
-      <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${fmtAmt(data.insik)}</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${fmtAmt(data.contract)}</td>
     </tr>`;
   });
 
@@ -3857,7 +3859,7 @@ function renderInternalTab(){
     <td style="padding:8px 10px;font-weight:700;color:var(--t0)">합계</td>
     <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--t0)">${totalCnt}건</td>
     <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--success)">${totalDone}건</td>
-    <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:800;color:var(--a2)">${fmtAmt(totalInsik)}</td>
+    <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:800;color:var(--a2)">${fmtAmt(totalContract)}</td>
   </tr>`;
 
   tblHtml += `</tbody></table>`;
