@@ -1724,6 +1724,8 @@ function coNameHtml(co){
 
 // 계약금액(계획금액) 취득 헬퍼
 function getPlanAmt(co){
+  // 무상 업체 강제 0원
+  if((co.업체명||'').replace(/\s/g,'').includes('SGI서울보증')) return 0;
   const cf=getCF(co)||getHCF(co);
   return cf?(cf.계획금액||0):0;
 }
@@ -3374,7 +3376,7 @@ function openKpiDetail(type){
         const p=getPricing(co);
         const cf=getCF(co)||getHCF(co);
         const kt=(cf&&cf.계약목표)||co.계약목표||'—';
-        const plan=cf?(cf.계획금액||0):0;
+        const plan=getPlanAmt(co);
         return `<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:8px">${coNameHtml(co)}</td>
           <td style="padding:8px;color:var(--t2)">${esc(co.타겟제품)}</td>
@@ -3506,7 +3508,7 @@ function openPkgDetail(){
   const tHead='<thead><tr>'+['업체명','RM','SO','계약금액','인식금액'].map(h=>`<th style="padding:7px;text-align:${h.includes('금액')?'right':'left'};border-bottom:1px solid var(--border);color:var(--t2);font-size:10px">${h}</th>`).join('')+'</tr></thead>';
   function pkgRows(arr){
     return arr.map(co=>{
-      const p=getPricing(co); const cf=getCF(co)||getHCF(co); const plan=cf?(cf.계획금액||0):0;
+      const p=getPricing(co); const cf=getCF(co)||getHCF(co); const plan=getPlanAmt(co);
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px;font-size:12px">${coNameHtml(co)}</td>
         <td style="padding:7px;font-size:12px;color:var(--t1)">${esc(co.RM||'—')}</td>
@@ -3587,7 +3589,7 @@ function openSvcDetail(svcKey){
     return arr.map(co=>{
       const p=getPricing(co);
       const cf=getCF(co)||getHCF(co);
-      const plan=cf?(cf.계획금액||0):0;
+      const plan=getPlanAmt(co);
       return`<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px">${coNameHtml(co)}</td>
         <td style="padding:7px;color:var(--t1)">${esc(co.RM||'—')}</td>
@@ -3702,7 +3704,7 @@ function showPipelineDetail(stageNum){
             return arr.map(co=>{
               const p=getPricing(co);
               const cf=getCF(co)||getHCF(co);
-              const plan=cf?(cf.계획금액||0):0;
+              const plan=getPlanAmt(co);
               const insiAmt=p.amount||0;
               // 업체명: 서브텍스트 줄바꿈 방지 위해 별도 처리
               const coMain=esc(co.업체명||'');
@@ -4595,7 +4597,7 @@ function renderPersonDetailModal(person,months){
         // 목표매출 테이블: 8단계=계획금액, 비8단계=인식금액
         // 달성매출 테이블: 항상 인식금액
         // 기업신용평가 가상 행: _ceQuota 사용
-        const _cfPlan=cf?cf.계획금액||0:0;
+        const _cfPlan=getPlanAmt(co);
         const _cfTime=cf?cf.계약목표||'':'';
         const amt=co._ceQuota!=null?co._ceQuota:(cf?(
           isTarget
@@ -4829,8 +4831,8 @@ function renderAdminTable(){
   const IS='padding:2px 5px;font-size:11px;background:var(--bg1);border:1px solid var(--border);border-radius:4px;color:var(--t0);width:100px;text-align:right';
   tb.innerHTML=cos.map(co=>{
     const cf=getCF(co);
-    const amt=cf?cf.계획금액||0:0;
-    const ins=cf?calcInsikTarget(cf.계획금액||0,cf.계약목표||''):0; // 목표 인식금액 표시
+    const amt=getPlanAmt(co);
+    const ins=calcInsikTarget(getPlanAmt(co),cf?cf.계약목표||'':''); // 목표 인식금액 표시
     const cfKey=co.업체명+'|'+(normalizeProduct(co.타겟제품||'')||co.타겟제품||'')+'|'+(co._subProd||'');
     const upd=co.updatedAt?new Date(co.updatedAt).toLocaleDateString('ko-KR'):'—';
     return `<tr>
