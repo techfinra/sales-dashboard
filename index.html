@@ -814,6 +814,16 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
   </div>
 </div><!-- /internal tab -->
 
+<!-- ===== 타겟제품 상세 팝업 ===== -->
+<div class="overlay" id="internalDetailModal" onclick="if(event.target===this)closeInternalDetail()">
+  <div class="modal" style="max-width:620px;width:92%;max-height:80vh;overflow-y:auto">
+    <div id="internalDetailBody"></div>
+    <div style="text-align:right;margin-top:14px">
+      <button onclick="closeInternalDetail()" style="padding:6px 18px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);cursor:pointer;font-size:13px">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== LOGIN MODAL ===== -->
 <div class="overlay" id="loginModal">
   <div class="modal">
@@ -3756,6 +3766,83 @@ function closePipeDetail(){
 // =====================================================
 // 내부관리 탭 — 타겟제품별 현황
 // =====================================================
+// 타겟제품별 업체 상세 팝업
+function openInternalProdDetail(prod){
+  const cos = getEffectiveCompanies();
+  function getProd(co){ return normalizeProduct(co.타겟제품||'')||(co.타겟제품||'기타'); }
+  const fmtAmt = v => !v?'0':v<1e6?Math.round(v/1e4)+'만원':(Math.floor(v/1e6)/100).toFixed(2)+'억원';
+
+  const items = cos.filter(co=>getProd(co)===prod).map(co=>{
+    const p = getPricing(co);
+    const isDone = co._stageNum===5;
+    const contractAmt = isDone ? (p.amount||0) : 0;
+    const expectedAmt = isDone ? 0 : parseAmtText(co.기대실적||'');
+    return {co, isDone, contractAmt, expectedAmt, amt: isDone?contractAmt:expectedAmt};
+  }).sort((a,b)=>b.amt-a.amt);
+
+  // HC 행 추가
+  const hcData = getHCAdminData();
+  const hcItems = [];
+  for(const [cat, rows] of Object.entries(hcData)){
+    if((normalizeProduct(cat)||cat)===prod){
+      for(const r of rows) hcItems.push({hc:true, 업체명:r.업체명, 목표:r.목표금액||0, 인식:r.인식금액||0});
+    }
+  }
+  if(prod==='크레디뷰'){
+    hcItems.push({hc:true, 업체명:'크레디뷰 Mass', 목표:getCrediviewMass(), 인식:getCrediviewMass()});
+  }
+
+  let rows = '';
+  let total = 0;
+  for(const {co, isDone, contractAmt, expectedAmt, amt} of items){
+    total += amt;
+    const stageLabel = co.진행단계||'-';
+    const amtLabel = isDone
+      ? `<span style="color:var(--success);font-weight:700">${fmtAmt(contractAmt)}</span>`
+      : (expectedAmt>0 ? `<span style="color:var(--a2)">${fmtAmt(expectedAmt)}</span>` : '<span style="color:var(--t2)">—</span>');
+    const badge = isDone
+      ? `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(52,211,153,.15);color:#34d399;font-weight:700">계약완료</span>`
+      : `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg2);color:var(--t2)">${stageLabel}</span>`;
+    rows += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 10px;font-weight:600;color:var(--t0)">${esc(co.업체명||'')}</td>
+      <td style="padding:7px 10px;color:var(--t1)">${esc(co.RM||'')} / ${esc(co.SO||'')}</td>
+      <td style="padding:7px 10px">${badge}</td>
+      <td style="padding:7px 10px;text-align:right;font-family:Outfit,sans-serif">${amtLabel}</td>
+    </tr>`;
+  }
+  for(const r of hcItems){
+    total += r.목표;
+    rows += `<tr style="border-bottom:1px solid var(--border);background:rgba(52,211,153,.04)">
+      <td style="padding:7px 10px;font-weight:600;color:var(--t0)">${esc(r.업체명)}</td>
+      <td style="padding:7px 10px;color:var(--t2)">—</td>
+      <td style="padding:7px 10px"><span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(52,211,153,.15);color:#34d399;font-weight:700">HC</span></td>
+      <td style="padding:7px 10px;text-align:right;font-family:Outfit,sans-serif;color:var(--success);font-weight:700">${fmtAmt(r.목표)}</td>
+    </tr>`;
+  }
+
+  const html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:15px;font-weight:800;color:var(--t0)">${prod} <span style="font-size:11px;font-weight:400;color:var(--t2)">타겟제품 상세</span></div>
+    <div style="font-family:Outfit,sans-serif;font-size:18px;font-weight:900;color:var(--a2)">${fmtAmt(total)}</div>
+  </div>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:2px solid var(--border)">
+      <th style="padding:7px 10px;text-align:left;color:var(--t2)">업체명</th>
+      <th style="padding:7px 10px;text-align:left;color:var(--t2)">RM / SO</th>
+      <th style="padding:7px 10px;text-align:left;color:var(--t2)">단계</th>
+      <th style="padding:7px 10px;text-align:right;color:var(--t2)">기대실적/계약금액</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+
+  document.getElementById('internalDetailBody').innerHTML = html;
+  document.getElementById('internalDetailModal').classList.add('on');
+}
+function closeInternalDetail(){
+  const m=document.getElementById('internalDetailModal');
+  m.classList.remove('on');
+}
+
 function renderInternalTab(){
   const chartEl = document.getElementById('internalProductChart');
   const tableEl = document.getElementById('internalProductTable');
@@ -3763,36 +3850,36 @@ function renderInternalTab(){
 
   const cos = getEffectiveCompanies();
 
-  // 타겟제품 정규화 (normalizeProduct 활용)
+  // 타겟제품 정규화
   function getProd(co){ return normalizeProduct(co.타겟제품||'')||(co.타겟제품||'기타'); }
 
-  // 전체 파이프라인 집계 (전 단계) — 계약금액은 단계 무관 전체 합산
+  // 전체 파이프라인 집계 — 계약완료는 계약금액, 미완료는 기대실적 금액
   const allProds = {};
+  const prodItems = {}; // 팝업용 업체 목록
   for(const co of cos){
     const k = getProd(co);
-    if(!allProds[k]) allProds[k]={byStage:{}, insik:0, contract:0, cnt:0};
+    if(!allProds[k]) allProds[k]={byStage:{}, contract:0, cnt:0};
+    if(!prodItems[k]) prodItems[k]=[];
     allProds[k].cnt++;
     allProds[k].byStage[co._stageNum||0] = (allProds[k].byStage[co._stageNum||0]||0)+1;
-    const p = getPricing(co);
-    const amt = p.amount||0;
-    allProds[k].contract += amt; // 전 단계 계약금액 합산
-    if(co._stageNum===5) allProds[k].insik += amt; // 인식금액(5단계만)
+    const isDone = co._stageNum===5;
+    const amt = isDone ? (getPricing(co).amount||0) : parseAmtText(co.기대실적||'');
+    allProds[k].contract += amt;
+    prodItems[k].push(co);
   }
 
-  // HC(금융중개, 기업신용평가) — 계약금액/인식금액 모두 목표금액/인식금액으로
+  // HC(금융중개, 기업신용평가)
   const hcData = getHCAdminData();
   for(const [cat, rows] of Object.entries(hcData)){
     const k = normalizeProduct(cat)||cat;
-    if(!allProds[k]) allProds[k]={byStage:{},insik:0,contract:0,cnt:0};
+    if(!allProds[k]) allProds[k]={byStage:{},contract:0,cnt:0};
     for(const r of rows){
       allProds[k].contract += (r.목표금액||0);
-      allProds[k].insik    += (r.인식금액||0);
       allProds[k].cnt++;
     }
   }
-  // 크레디뷰 Mass 추가
-  if(!allProds['크레디뷰']) allProds['크레디뷰']={byStage:{},insik:0,contract:0,cnt:0};
-  allProds['크레디뷰'].insik    += getCrediviewMass();
+  // 크레디뷰 Mass
+  if(!allProds['크레디뷰']) allProds['크레디뷰']={byStage:{},contract:0,cnt:0};
   allProds['크레디뷰'].contract += getCrediviewMass();
 
   // 정렬: 계약금액 내림차순
@@ -3813,7 +3900,7 @@ function renderInternalTab(){
     const cntAll = data.cnt;
     const cntDone = data.byStage[5]||0;
     chartHtml += `
-    <div style="display:grid;grid-template-columns:130px 1fr 90px;align-items:center;gap:10px">
+    <div style="display:grid;grid-template-columns:130px 1fr 90px;align-items:center;gap:10px;cursor:pointer" onclick="openInternalProdDetail('${prod}')">
       <div style="font-size:12px;font-weight:600;color:var(--t0);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${prod}">${prod}</div>
       <div style="background:var(--bg2);border-radius:5px;height:20px;position:relative;overflow:hidden">
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${col};border-radius:5px;transition:width .6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
@@ -3821,7 +3908,7 @@ function renderInternalTab(){
         </div>
         ${pct<=15&&data.contract>0?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:var(--t0)">${fmtAmt(data.contract)}</span>`:''}
       </div>
-      <div style="font-size:11px;color:var(--t2);white-space:nowrap">전체 ${cntAll}건</div>
+      <div style="font-size:11px;color:var(--a2);white-space:nowrap">▶ ${cntAll}건</div>
     </div>`;
   });
   chartHtml += `</div>`;
@@ -3844,14 +3931,14 @@ function renderInternalTab(){
     const col = palette[i % palette.length];
     const cntDone = data.byStage[5]||0;
     totalCnt += data.cnt; totalDone += cntDone; totalContract += data.contract;
-    tblHtml += `<tr style="border-bottom:1px solid var(--border)">
+    tblHtml += `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openInternalProdDetail('${prod}')" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
       <td style="padding:8px 10px">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${col};margin-right:6px"></span>
         <span style="font-weight:600;color:var(--t0)">${prod}</span>
       </td>
       <td style="padding:8px 10px;text-align:right;color:var(--t1)">${data.cnt}건</td>
       <td style="padding:8px 10px;text-align:right;color:var(--success)">${cntDone}건</td>
-      <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${fmtAmt(data.contract)}</td>
+      <td style="padding:8px 10px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${fmtAmt(data.contract)} <span style="font-size:10px;color:var(--a2)">▶</span></td>
     </tr>`;
   });
 
