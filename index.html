@@ -1740,6 +1740,9 @@ function getContractYear(co){
 
 function getPricing(co){
   const id = co.id;
+  // 0. 무상 업체 강제 0원 고정
+  if((co.업체명||'').includes('SGI서울보증')&&(co.타겟제품||'').includes('기업DB조회')&&(co.타겟제품||'').includes('기업모니터링'))
+    return {amount:0,type:'confirmed',source:'zero_override'};
   // 1. 수동 오버라이드 (관리자 직접 입력)
   if(DB.pricingOverride[id]) return {amount:DB.pricingOverride[id].amount,type:DB.pricingOverride[id].type||'manual'};
   // 1b. 하드코딩 업체 (HCF 있으면 인식금액 0이어도 즉시 반환 — fallback 차단)
