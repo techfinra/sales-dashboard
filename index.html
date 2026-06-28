@@ -2900,15 +2900,13 @@ function renderKPIs(){
   // ── KPI 방문미팅 카운트 (이번주) ──
   let kpiVisitCount=0;
   const _kpiWR=getWeekRange();
+  const kpiVDedup=new Set();
   for(const c of cos){
     const visits=parseVisitMeetings(c.방문미팅||'');
-    const kpiVDedup=new Set();
     for(const v of visits){
       if(v.date>=_kpiWR.thisStart&&v.date<=_kpiWR.thisEnd){
-        for(const nm of v.names){
-          const dk=nm+'|'+(c.업체명||'')+'|'+v.yr+'/'+v.mm+'/'+v.dd;
-          if(!kpiVDedup.has(dk)){ kpiVDedup.add(dk); kpiVisitCount++; }
-        }
+        const dk=(c.업체명||'')+'|'+v.yr+'/'+v.mm+'/'+v.dd;
+        if(!kpiVDedup.has(dk)){ kpiVDedup.add(dk); kpiVisitCount++; }
       }
     }
   }
