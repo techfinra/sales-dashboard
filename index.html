@@ -1313,6 +1313,7 @@ const HC_ADMIN_DEFAULTS = {
     {id:'hc_수출입은행_금융중개',  업체명:'수출입은행(팩토링)', 타겟제품:'금융중개서비스',         RM:'이창희', SO:'박선정', 목표금액:36000000,  인식금액:36000000},
     {id:'hc_중진공_팩토링',        업체명:'중진공(팩토링)',      타겟제품:'금융중개서비스(팩토링)',   RM:'이창희', SO:'박선정', 목표금액:44000000,  인식금액:44000000},
     {id:'hc_중진공_네트워크론',    업체명:'중진공(네트워크론)',  타겟제품:'금융중개서비스(네트워크론)',RM:'이창희', SO:'박선정', 목표금액:268000000, 인식금액:268000000},
+    {id:'hc_신한은행_금융중개',    업체명:'신한은행(팩토링)',    타겟제품:'금융중개서비스(팩토링)',   RM:'이창희', SO:'박선정', 목표금액:1000000,   인식금액:1000000},
   ],
   '기업신용평가': [
     {id:'hc_ce_이창희', 업체명:'기업신용평가', 타겟제품:'기업신용평가', RM:'이창희', SO:'박선정', 목표금액:100000000, 인식금액:0},
@@ -1359,6 +1360,7 @@ const HC_HARDCODED_OVERRIDE = {
   'hc_수출입은행_금융중개': { 계획금액:36000000,  인식금액:36000000  },
   'hc_중진공_팩토링':       { 계획금액:44000000,  인식금액:44000000  },
   'hc_중진공_네트워크론':   { 계획금액:268000000, 인식금액:268000000 },
+  'hc_신한은행_금융중개':   { 계획금액:1000000,   인식금액:1000000   },
 };
 const _origRebuildHCCompanies = rebuildHCCompanies;
 rebuildHCCompanies = function(){
@@ -1504,6 +1506,7 @@ const HARDCODED_COMPANIES = [
   {업체명:'수출입은행', 타겟제품:'금융중개서비스', _subProd:'',          RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_수출입은행_금융중개'},
   {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_중진공_팩토링'},
   {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'네트워크론',  RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_중진공_네트워크론'},
+  {업체명:'신한은행',   타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_신한은행_금융중개'},
 ];
 // HARDCODED_FINANCIALS 제거 — HC 금액은 서비스 관리 어드민에서 설정
 const HARDCODED_FINANCIALS = {};
@@ -1732,7 +1735,7 @@ function getPlanAmt(co){
 
 // 계약 연도 판별: 금융중개HC → 2025, "25년"/"2025" 포함 → 2025, 나머지 → 2026 (B안)
 function getContractYear(co){
-  const HC_FIN=['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론'];
+  const HC_FIN=['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개'];
   if(co.id && HC_FIN.includes(co.id)) return 2025;
   const cf=getCF(co)||getHCF(co);
   const t=((cf&&cf.계약목표)||co.계약목표||'').toString();
@@ -2715,6 +2718,7 @@ function migrateHCNames(){
       'hc_수출입은행_금융중개':'수출입은행(팩토링)',
       'hc_중진공_팩토링':'중진공(팩토링)',
       'hc_중진공_네트워크론':'중진공(네트워크론)',
+      'hc_신한은행_금융중개':'신한은행(팩토링)',
     };
     let changed=false;
     for(const rows of Object.values(saved)){
@@ -4053,7 +4057,7 @@ function renderRMSummary(){
   if(!el) return;
   const allCos=getEffectiveCompanies();
   const KNOWN_RMS=['이창희','김종환','전힘찬'];
-  const _hcEx=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론']);
+  const _hcEx=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
   // RM별 달성매출 계산
   let totalActual=0;
   const rmRevs={};
@@ -4098,7 +4102,7 @@ function renderRMCards(){
     const myCoNames=new Set(my.map(c=>c.업체명));
     const confCoCount=new Set(my.filter(c=>c._stageNum===5).map(c=>c.업체명)).size;
     const act=my.filter(c=>c._stageNum>0&&c._stageNum<5).length;
-    const _hcEx=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론']);
+    const _hcEx=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
     let rev=0; for(const co of my.filter(c=>c._stageNum===5&&!isED(c)&&!_hcEx.has(c.id||''))) rev+=getPricing(co).amount||0;
     const pn=new Set(prev.filter(c=>c.RM===p||c.SO===p).map(c=>c.업체명));
     const newC=[...myCoNames].filter(n=>!pn.has(n)).length;
@@ -4634,7 +4638,7 @@ function renderPersonDetailModal(person,months){
   }
   // ── KPI 카드 (담당업체/목표매출/달성매출) + 달성률 바 ──
   // 목표매출: 8단계=계획금액, 비8단계=인식금액 + 기업신용평가 할당
-  const _hcExcludeRev=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론']);
+  const _hcExcludeRev=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
   let popupTargetRev=getCEQuota(person);
   for(const co of cos){
     if(co._isHC&&normalizeProduct(co.타겟제품||'')==='기업신용평가') continue;
@@ -4704,7 +4708,7 @@ function renderPersonDetailModal(person,months){
 
   // ── 달성매출 업체 테이블 (8단계 업체만) ──
   // 달성매출: 경영진단보고서 + 금융중개서비스 HC 제외 (공통매출 현황에서 표시)
-  const _hcExclude=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론']);
+  const _hcExclude=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
   const achieveItems=cos.filter(c=>c._stageNum===5&&!isED(c)&&!_hcExclude.has(c.id||''));
   const achieveTable=`
     <div style="margin-bottom:16px">
