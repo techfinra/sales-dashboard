@@ -2120,60 +2120,66 @@ function parseDocxHtml(html){
   const tables=doc.querySelectorAll('table');
   if(!tables.length){ console.warn('[DOCX] 테이블 없음'); return []; }
 
-  // 첫 번째 메인 테이블 (11컬럼 이상)
-  let mainTable=null;
+  // ── 세일즈 데이터 테이블 모두 수집 (메인 + 오프라인 행사 + 관리 제외) ──
+  // 조건: 헤더행에 '구분' + '업체명' + 'RM' 포함, PE·VC 리스트/영업프로세스 테이블 제외
+  const salesTables=[];
   for(const t of tables){
     const rows=t.querySelectorAll('tr');
     for(const r of rows){
       const txt=r.textContent;
       if(txt.includes('구분')&&txt.includes('업체명')&&txt.includes('RM')){
-        mainTable=t; break;
+        // PE·VC 리스트 테이블 제외 (Tapping 여부 컬럼 있음)
+        if(txt.includes('Tapping')) break;
+        salesTables.push(t);
+        break;
       }
     }
-    if(mainTable) break;
   }
-  if(!mainTable){ console.warn('[DOCX] 데이터 테이블 없음'); return []; }
-
-  const rows=Array.from(mainTable.querySelectorAll('tr'));
-
-  // ── 헤더행에서 실제 컬럼 수 동적 감지 (방문미팅 열 추가 대응) ──
-  // 방문미팅 포함: 13열 / 미포함: 12열
-  let NUM_COLS=12;
-  for(let ri=0;ri<rows.length;ri++){
-    const rowTxt=rows[ri].textContent.trim();
-    if(rowTxt.includes('구분')&&rowTxt.includes('업체명')&&rowTxt.includes('RM')){
-      const hdrTds=Array.from(rows[ri].querySelectorAll('td,th'));
-      // colspan 고려한 실제 컬럼 수 산출
-      let colCount=0;
-      for(const td of hdrTds) colCount+=parseInt(td.getAttribute('colspan')||1);
-      if(colCount>=13) NUM_COLS=13; // 방문미팅 열 포함
-      break;
-    }
-  }
-
-  // ── rowspan 처리를 위한 가상 그리드 ──
-  // spanTracker[col] = {text, remaining}
-  const spanTracker=new Array(NUM_COLS).fill(null);
+  if(!salesTables.length){ console.warn('[DOCX] 데이터 테이블 없음'); return []; }
 
   const entries=[];
-  let lastCat='', lastCo='', lastRM='';
-  let hdrFound=false;
 
-  for(let ri=0;ri<rows.length;ri++){
-    const tds=Array.from(rows[ri].querySelectorAll('td,th'));
-    const rowTxt=rows[ri].textContent.trim();
+  // ── 각 세일즈 테이블을 순서대로 파싱 ──
+  for(const mainTable of salesTables){
+    const rows=Array.from(mainTable.querySelectorAll('tr'));
 
-    // 헤더행 감지
-    if(!hdrFound){
+    // ── 헤더행에서 실제 컬럼 수 동적 감지 (방문미팅 열 추가 대응) ──
+    // 방문미팅 포함: 13열 / 미포함: 12열
+    let NUM_COLS=12;
+    for(let ri=0;ri<rows.length;ri++){
+      const rowTxt=rows[ri].textContent.trim();
       if(rowTxt.includes('구분')&&rowTxt.includes('업체명')&&rowTxt.includes('RM')){
-        hdrFound=true;
+        const hdrTds=Array.from(rows[ri].querySelectorAll('td,th'));
+        // colspan 고려한 실제 컬럼 수 산출
+        let colCount=0;
+        for(const td of hdrTds) colCount+=parseInt(td.getAttribute('colspan')||1);
+        if(colCount>=13) NUM_COLS=13; // 방문미팅 열 포함
+        break;
       }
-      continue;
     }
 
-    // 영업프로세스 설명 테이블 도달 시 중단
-    if(rowTxt.includes('데이터 및 상품 소개')&&rowTxt.includes('고객에게')) break;
-    if(rowTxt.includes('[데이터 및 상품 소개]')) break;
+    // ── rowspan 처리를 위한 가상 그리드 ──
+    // spanTracker[col] = {text, remaining}
+    const spanTracker=new Array(NUM_COLS).fill(null);
+
+    let lastCat='', lastCo='', lastRM='';
+    let hdrFound=false;
+
+    for(let ri=0;ri<rows.length;ri++){
+      const tds=Array.from(rows[ri].querySelectorAll('td,th'));
+      const rowTxt=rows[ri].textContent.trim();
+
+      // 헤더행 감지
+      if(!hdrFound){
+        if(rowTxt.includes('구분')&&rowTxt.includes('업체명')&&rowTxt.includes('RM')){
+          hdrFound=true;
+        }
+        continue;
+      }
+
+      // 영업프로세스 설명 테이블 도달 시 중단 (동일 테이블 내 방어)
+      if(rowTxt.includes('데이터 및 상품 소개')&&rowTxt.includes('고객에게')) break;
+      if(rowTxt.includes('[데이터 및 상품 소개]')) break;
 
     // ── rowspan 고려한 가상 행 구성 ──
     const vrow=new Array(NUM_COLS).fill('');
@@ -2269,8 +2275,9 @@ function parseDocxHtml(html){
       updatedAt:new Date().toISOString()
     });
   }
+  } // ── salesTables 루프 끝 ──
 
-  console.log('[DOCX] 파싱 완료:',entries.length,'건',
+  console.log('[DOCX] 파싱 완료:',entries.length,'건 (테이블',salesTables.length,'개)',
     entries.slice(0,5).map(e=>e.업체명+'|'+e.타겟제품));
   return entries;
 }
