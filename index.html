@@ -1330,7 +1330,16 @@ function loadHCAdmin(){
 function getHCAdminData(){
   const saved=loadHCAdmin();
   const result=JSON.parse(JSON.stringify(HC_ADMIN_DEFAULTS));
-  if(saved){ for(const svc of Object.keys(result)){ if(saved[svc]) result[svc]=saved[svc]; } }
+  if(saved){
+    for(const svc of Object.keys(result)){
+      if(saved[svc]){
+        // saved 기반으로 덮어쓰되, 코드에만 있는 새 항목(id 기준)은 추가 병합
+        const savedIds=new Set(saved[svc].map(r=>r.id));
+        const newRows=result[svc].filter(r=>r.id&&!savedIds.has(r.id));
+        result[svc]=[...saved[svc], ...newRows];
+      }
+    }
+  }
   return result;
 }
 
