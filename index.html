@@ -1340,6 +1340,17 @@ function getHCAdminData(){
       }
     }
   }
+  // ── HC_HARDCODED_OVERRIDE 금액 강제 적용 (Firebase 저장값 무시) ──
+  if(typeof HC_HARDCODED_OVERRIDE!=='undefined'){
+    for(const rows of Object.values(result)){
+      for(const r of rows){
+        if(r.id && HC_HARDCODED_OVERRIDE[r.id]){
+          r.목표금액 = HC_HARDCODED_OVERRIDE[r.id].계획금액;
+          r.인식금액 = HC_HARDCODED_OVERRIDE[r.id].인식금액;
+        }
+      }
+    }
+  }
   return result;
 }
 
