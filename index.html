@@ -2941,7 +2941,7 @@ function renderKPIs(){
       }
     }
   }
-  const totalWeekly=(salesActDelta||0)+newCoCount+pipeChangeCount;
+  const totalWeekly=(salesActDelta||0)+newCoCount+pipeChangeCount+(kpiVisitCount||0);
   if(salesActDelta!==null||hasPrevKpi){
     const dColor=totalWeekly>0?'var(--success)':'var(--t2)';
     // KPI 카드 본문: Sales 활동만 표시 (방문미팅은 sub 텍스트로)
