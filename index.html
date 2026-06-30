@@ -4138,15 +4138,11 @@ function renderRMCards(){
       return (d-rmNow)/86400000>60?rmCurY-1:rmCurY;
     }
     const rmC14=_wr.lastStart;
-    // ★ 팝업과 동일: RM/SO 담당 + 방문미팅 참석자 포함
+    // ★ 담당 업체만 (RM/SO) — 방문미팅 1회 동행으로 영구 편입 X
     function makeActSetRange(snap, person, fromDate, toDate){
       const s=new Set();
       const _today2=new Date(); _today2.setHours(23,59,59,999);
-      const snapFiltered=snap.filter(c=>{
-        if(c.RM===person||c.SO===person) return true;
-        const _v=parseVisitMeetings(c.방문미팅||'');
-        return _v.some(v=>v.names.includes(person));
-      });
+      const snapFiltered=snap.filter(c=>c.RM===person||c.SO===person);
       for(const co of snapFiltered){
         const re3=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m3;
         while((m3=re3.exec(co.진행현황||''))!==null){
@@ -4334,13 +4330,9 @@ function openPersonDetailWeek(person, weekType){
   const now=new Date(); const curYear=now.getFullYear(),todayM=now.getMonth()+1,todayD=now.getDate();
   function inferYr(mm,dd){ const d=new Date(curYear,mm-1,dd); return (d-now)/86400000>60?curYear-1:curYear; }
   const _wr2=getWeekRange();
-  // RM/SO 담당 업체 + 방문미팅 names에 본인이 포함된 업체 (동반 참석 케이스 포함)
+  // RM/SO 담당 업체만 — 방문미팅 1회 동행으로 영구 편입 X
   const _allCosW=getEffectiveCompanies();
-  const cos=_allCosW.filter(c=>{
-    if(c.RM===person||c.SO===person) return true;
-    const _v=parseVisitMeetings(c.방문미팅||'');
-    return _v.some(v=>v.names.includes(person));
-  });
+  const cos=_allCosW.filter(c=>c.RM===person||c.SO===person);
 
   // ── Sales 활동 추출 ──
   const acts=[];
@@ -4370,12 +4362,12 @@ function openPersonDetailWeek(person, weekType){
   }
   acts.sort((a,b)=>b.dateObj-a.dateObj);
 
-  // ── 방문미팅 추출 ──
+  // ── 방문미팅 추출 (전체 업체 대상 — 대타 동행도 그 건은 표시) ──
   const fromDate=weekType===0?_wr2.thisStart:_wr2.lastStart;
   const toDate=weekType===0?_wr2.thisEnd:_wr2.lastEnd;
   const visits=[];
   const visitDedup=new Set();
-  for(const co of cos){
+  for(const co of _allCosW){
     const parsed=parseVisitMeetings(co.방문미팅||'');
     for(const v of parsed){
       if(v.date>=fromDate&&v.date<=toDate&&v.names.includes(person)){
