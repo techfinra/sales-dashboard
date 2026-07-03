@@ -764,6 +764,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
               <option value="경영진단보고서">경영진단보고서</option>
               <option value="크레디뷰Mass">크레디뷰 Mass</option>
               <option value="업체데이터">업체 데이터</option>
+              <option value="배포">배포(코드 변경)</option>
               <option value="기타">기타</option>
             </select>
             <button class="btn btn-s btn-sm" onclick="renderChangeLog()">🔄 새로고침</button>
@@ -1098,28 +1099,50 @@ function countVisitMeetings(person, cos, fromDate, toDate){
 // ── 임시 추가배정 목표매출 (나중에 삭제 시 이 블록만 제거) ──
 // 카드별 고정 목표매출 (RM/SO 개인별 하드코딩)
 // ── 화요일 기준 주차 계산 ──
-// 이번주: 가장 최근 완료된 월요일 기준 화~월 (6/2~6/8)
-// 지난주: 그 전주 화~월 (5/26~6/1)
+// 이번주: 금요일 기준으로 갱신 — 금/토/일/월/화/목 = 해당 주 화~월 표시
+// 예) 7/3(금) → 6/30(화)~7/6(월), 7/7(월) → 6/30(화)~7/6(월), 7/11(금) → 7/7(화)~7/13(월)
+// 수/목은 이전 주(화~월) 범위 유지
 function getWeekRange(){
   const today = new Date(); today.setHours(23,59,59,999);
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const dow = todayStart.getDay(); // 0=일,1=월,2=화,...
-  // 가장 최근 완료된 월요일: 월요일이면 오늘, 아니면 지난 월요일
-  const daysSinceMon = dow === 0 ? 6 : dow === 1 ? 0 : dow - 1;
-  const lastMon = new Date(todayStart);
-  lastMon.setDate(todayStart.getDate() - daysSinceMon);
-  // 이번주 화요일 = lastMon - 6일
-  const thisStart = new Date(lastMon);
-  thisStart.setDate(lastMon.getDate() - 6);
+  const dow = todayStart.getDay(); // 0=일,1=월,2=화,3=수,4=목,5=금,6=토
+
+  // 금요일(5) 기준으로 "이번 주 월요일"을 구함
+  // 금/토/일/월/화/수/목 → 각각 며칠 뒤 월요일(이번주 끝)까지 남은 날 계산
+  // dow=5(금): 다음 월요일까지 3일 → 이번주 월 = today+3
+  // dow=6(토): 다음 월요일까지 2일 → 이번주 월 = today+2
+  // dow=0(일): 다음 월요일까지 1일 → 이번주 월 = today+1
+  // dow=1(월): 이번주 월 = today
+  // dow=2(화): 이번주 월 = today-1 (금요일 기준 이미 갱신됨)
+  // dow=3(수): 이번주 월 = today-8 (지난 주 화~월 범위 유지)
+  // dow=4(목): 이번주 월 = today-7 (지난 주 화~월 범위 유지)
+
+  let daysToMon;
+  if(dow===5) daysToMon=3;       // 금 → +3
+  else if(dow===6) daysToMon=2;  // 토 → +2
+  else if(dow===0) daysToMon=1;  // 일 → +1
+  else if(dow===1) daysToMon=0;  // 월 → 오늘이 월
+  else if(dow===2) daysToMon=-1; // 화 → 어제가 월
+  else if(dow===3) daysToMon=-2; // 수 → 이전 주 월 유지
+  else              daysToMon=-3; // 목 → 이전 주 월 유지
+
+  const thisMon = new Date(todayStart);
+  thisMon.setDate(todayStart.getDate() + daysToMon);
+
+  // 이번주: 그 월요일 기준 화~월 (월-6일 ~ 월)
+  const thisStart = new Date(thisMon);
+  thisStart.setDate(thisMon.getDate() - 6);
   thisStart.setHours(0,0,0,0);
-  const thisEnd = new Date(lastMon);
-  thisEnd.setHours(23,59,59,999); // 마지막 월요일 끝
-  // 지난주
+  const thisEnd = new Date(thisMon);
+  thisEnd.setHours(23,59,59,999);
+
+  // 지난주: 이번주 시작 - 7일 ~ 이번주 시작 - 1일
   const lastStart = new Date(thisStart);
   lastStart.setDate(thisStart.getDate() - 7);
   const lastEnd = new Date(thisStart);
   lastEnd.setDate(thisStart.getDate() - 1);
-  lastEnd.setHours(23,59,59,999); // 지난주 마지막 월요일 끝
+  lastEnd.setHours(23,59,59,999);
+
   return { thisStart, thisEnd, lastStart, lastEnd };
 }
 
@@ -5558,11 +5581,64 @@ async function loadChangeLogFromDB(){
   return null;
 }
 
+// ── GitHub 커밋 로그 → 변경 이력 자동 병합 ──
+const GH_COMMIT_KEY='ghCommitLog_v1';
+async function syncGitHubCommits(){
+  try{
+    const res=await fetch('https://api.github.com/repos/techfinra/sales-dashboard/commits?per_page=50');
+    if(!res.ok) return;
+    const commits=await res.json();
+    if(!Array.isArray(commits)) return;
+
+    // 기존 커밋 SHA 목록 (중복 방지)
+    let existing=[];
+    try{ existing=JSON.parse(localStorage.getItem(GH_COMMIT_KEY)||'[]'); }catch(e){}
+    const existingShas=new Set(existing.map(e=>e.sha));
+
+    const newEntries=commits
+      .filter(c=>!existingShas.has(c.sha))
+      .map(c=>{
+        const d=new Date(c.commit.author.date);
+        const pad=n=>String(n).padStart(2,'0');
+        const ts=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        return {
+          sha: c.sha.slice(0,7),
+          ts,
+          type: '배포',
+          field: c.commit.message.split('\n')[0].slice(0,80),
+          before: '',
+          after: c.sha.slice(0,7),
+          author: c.commit.author.name||''
+        };
+      });
+
+    if(newEntries.length===0) return;
+
+    const merged=[...newEntries,...existing].slice(0,200);
+    localStorage.setItem(GH_COMMIT_KEY,JSON.stringify(merged));
+
+    // changeLog에도 병합 (type='배포'로 구분)
+    let logs=[];
+    try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
+    const existingTs=new Set(logs.filter(l=>l.type==='배포').map(l=>l.ts+l.field));
+    const toAdd=newEntries.filter(e=>!existingTs.has(e.ts+e.field));
+    if(toAdd.length>0){
+      const merged2=[...logs,...toAdd].sort((a,b)=>b.ts.localeCompare(a.ts)).slice(0,CHANGE_LOG_MAX);
+      localStorage.setItem(CHANGE_LOG_KEY,JSON.stringify(merged2));
+      if(window._db){
+        const _clean=obj=>JSON.parse(JSON.stringify(obj,(k,v)=>v===undefined?null:v));
+        window._db.ref('db/changeLog').set(_clean(merged2)).catch(()=>{});
+      }
+    }
+  }catch(e){ console.warn('[GH Sync]',e); }
+}
+
 function renderChangeLog(){
   const el=document.getElementById('changeLogContent');
   if(!el) return;
   el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--t2);font-size:13px">🔄 불러오는 중...</div>`;
   (async()=>{
+    await syncGitHubCommits();  // GitHub 커밋 먼저 동기화
     await loadChangeLogFromDB();
     let logs=[];
     try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
@@ -5576,7 +5652,7 @@ function renderChangeLog(){
       </div>`;
       return;
     }
-    const typeColor={'금융중개서비스':'#a78bfa','기업신용평가':'#60a5fa','경영진단보고서':'#34d399','크레디뷰Mass':'#22c55e','업체데이터':'#f59e0b','기타':'#94a3b8'};
+    const typeColor={'금융중개서비스':'#a78bfa','기업신용평가':'#60a5fa','경영진단보고서':'#34d399','크레디뷰Mass':'#22c55e','업체데이터':'#f59e0b','기타':'#94a3b8','배포':'#e879f9'};
     const rows=logs.map((l,i)=>{
       const col=typeColor[l.type]||'#94a3b8';
       return `<tr style="${i%2===0?'background:var(--bg2)':''}">
