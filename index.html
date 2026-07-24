@@ -441,6 +441,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
     <button class="nav-btn on" onclick="switchTab('dash')">대시보드</button>
     <button class="nav-btn" onclick="checkAdmin('admin')">관리자</button>
     <button class="nav-btn" onclick="checkAdmin('internal')">내부관리</button>
+    <button class="nav-btn" onclick="switchTab('extract')">추출</button>
   </nav>
   <div class="hdr-right">
     <div class="date-badge" id="hdrDate">—</div>
@@ -526,6 +527,32 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
         <div class="card-sub" style="margin-bottom:8px">최근 기록 · 롤백 가능</div>
         <div id="uploadHistory" style="max-height:200px;overflow-y:auto">
           <div class="empty" style="padding:12px"><div class="empty-icon" style="font-size:18px">📂</div><div class="empty-txt" style="font-size:11px">이력 없음</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 일정 엑셀 업로드 -->
+  <div class="sec">
+    <div class="card">
+      <div class="card-title">📅 일정 엑셀 업로드 <span style="font-size:11px;font-weight:400;color:var(--t2)">(아마란스10 일정 다운로드 파일)</span></div>
+      <div class="card-sub" style="margin-bottom:12px">추출 탭의 업무진행현황 "진행 예정" 생성에 활용됩니다</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+        <div>
+          <div class="upload-zone" id="scheduleUploadZone" onclick="document.getElementById('scheduleInput').click()" style="cursor:pointer;padding:20px">
+            <input type="file" accept=".xlsx,.xls,.csv" id="scheduleInput" style="display:none" onchange="handleScheduleExcel(this.files[0])">
+            <div class="up-icon">📅</div>
+            <div class="up-text">일정 엑셀(.xlsx) 업로드</div>
+            <div class="up-sub">드래그 또는 클릭</div>
+          </div>
+          <div id="scheduleUploadStatus" style="margin-top:8px;font-size:12px;color:var(--t2)">미업로드</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px">업로드된 일정 미리보기</div>
+          <div id="schedulePreview" style="font-size:11px;color:var(--t2);max-height:160px;overflow-y:auto;background:var(--bg2);border-radius:8px;padding:10px">
+            일정 엑셀을 업로드하면 미리보기가 표시됩니다
+          </div>
+          <button onclick="clearScheduleExcel()" style="margin-top:8px;padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--t2);cursor:pointer;font-size:11px">🗑 일정 초기화</button>
         </div>
       </div>
     </div>
@@ -827,7 +854,36 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
   </div>
 </div>
 
-<!-- ===== LOGIN MODAL ===== -->
+<!-- ===== 추출 탭 ===== -->
+<div class="tab" id="tab-extract">
+  <div style="max-width:1100px;margin:0 auto;padding:24px 16px">
+
+    <!-- 헤더 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:var(--t0)">📋 추출</div>
+        <div style="font-size:12px;color:var(--t2);margin-top:3px" id="extractWeekLabel"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="renderExtractTab('work')" id="extractBtnWork" style="font-weight:700">📌 업무진행현황</button>
+        <button class="btn btn-s" onclick="renderExtractTab('weekly')" id="extractBtnWeekly">📊 주간보고</button>
+      </div>
+    </div>
+
+    <!-- 원피스 링크 -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;padding:14px 16px;background:var(--bg1);border:1px solid var(--border);border-radius:10px">
+      <span style="font-size:11px;font-weight:700;color:var(--t2);align-self:center;margin-right:4px">🔗 바로가기</span>
+      <a href="https://gwa.douzone.com/ecm/oneffice/?token=42cD5188DG71FG59665F141F67a87D9B2G1cD3e42BeF279F6c512BDc52455G61" target="_blank" style="padding:5px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--a1);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">📄 세일즈추진사항</a>
+      <a href="https://gwa.douzone.com/ecm/oneffice/?token=66DD888c2c49ea84F663e9cF66FG4c7e6DF3cB53FF8aa7F832e3F8534a4ee426" target="_blank" style="padding:5px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--a1);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">📄 주간보고(매주 화)</a>
+      <a href="https://gwa.douzone.com/ecm/oneffice/?token=859F261D2a59F6c83157565416a479D649926D83a1F19Ba31D8F4B65618e1e64" target="_blank" style="padding:5px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--a1);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">📄 업무진행현황</a>
+      <a href="https://gwa.douzone.com/ecm/oneffice/?token=acG1c1F2B4c8613c774e4F26G2FBc1Dac3aD754957635BcB5c9e23356cBca3G2" target="_blank" style="padding:5px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--a1);font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap">📄 대표님 주간보고</a>
+    </div>
+
+    <!-- 컨텐츠 영역 -->
+    <div id="extractContent"></div>
+
+  </div>
+</div>
 <div class="overlay" id="loginModal">
   <div class="modal">
     <div class="modal-hdr">
@@ -1068,7 +1124,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
 // =====================================================
 // CONFIG & CONSTANTS
 // =====================================================
-const KNOWN_RMS = ['이창희','김종환','전힘찬','한영관'];
+const KNOWN_RMS = ['이창희','김종환','한영관','전힘찬'];
 const KNOWN_RM_SO_MAP=[{"업체명":"수출입은행","RM":"이창희","SO":"박선정"},{"업체명":"SGI서울보증","RM":"이창희","SO":"육태우"},{"업체명":"중진공창업지원처","RM":"이창희","SO":"육태우"},{"업체명":"신용보증기금","RM":"이창희","SO":"박경민"},{"업체명":"중진공","RM":"이창희","SO":"육태우"},{"업체명":"더존>전략투자Unit","RM":"이창희","SO":"육태우"},{"업체명":"한국투자저축은행","RM":"이창희","SO":"육태우"},{"업체명":"이지크레더블","RM":"이창희","SO":"박선정"},{"업체명":"정보통신공제조합 ICFC","RM":"이창희","SO":"박경민"},{"업체명":"정보통신공사협회 KICA","RM":"이창희","SO":"박선정"},{"업체명":"엔지니어링공제조합","RM":"이창희","SO":"전힘찬"},{"업체명":"소방산업공제조합","RM":"이창희","SO":"전힘찬"},{"업체명":"전문건설공제조합","RM":"이창희","SO":"육태우"},{"업체명":"나이스평가정보","RM":"이창희","SO":"육태우"},{"업체명":"KCB","RM":"이창희","SO":"육태우"},{"업체명":"KODATA","RM":"이창희","SO":"육태우"},{"업체명":"우리금융캐피탈","RM":"이창희","SO":"육태우"},{"업체명":"더존비즈온","RM":"이창희","SO":"육태우"},{"업체명":"비바리퍼블리카","RM":"이창희","SO":"박선정"},{"업체명":"토스뱅크(NICE)","RM":"이창희","SO":"육태우"},{"업체명":"토스페이먼츠","RM":"이창희","SO":"박선정"},{"업체명":"NH카드(NICE)","RM":"이창희","SO":"육태우"},{"업체명":"KB국민카드(직영업)","RM":"이창희","SO":"육태우"},{"업체명":"KB국민카드(KCB)","RM":"이창희","SO":"육태우"},{"업체명":"롯데카드(KCB)","RM":"이창희","SO":"육태우"},{"업체명":"오릭스캐피탈코리아","RM":"이창희","SO":"박경민"},{"업체명":"JB우리캐피탈","RM":"이창희","SO":"박선정"},{"업체명":"키움인베스트먼트","RM":"이창희","SO":"박선정"},{"업체명":"PACM","RM":"이창희","SO":"박경민"},{"업체명":"SGI신용정보","RM":"이창희","SO":"육태우"},{"업체명":"하나은행(NICE)","RM":"이창희","SO":"육태우"},{"업체명":"카카오뱅크(NICE)","RM":"이창희","SO":"육태우"},{"업체명":"케이뱅크(NICE)","RM":"이창희","SO":"육태우"},{"업체명":"하나캐피탈","RM":"이창희","SO":"박경민"},{"업체명":"MG캐피탈","RM":"이창희","SO":"박경민"},{"업체명":"BNW인베스트먼트","RM":"이창희","SO":"박선정"},{"업체명":"신한은행","RM":"김종환","SO":"박경민"},{"업체명":"우리은행","RM":"김종환","SO":"박경민"},{"업체명":"NH농협은행","RM":"김종환","SO":"박경민"},{"업체명":"KB국민은행","RM":"김종환","SO":"박선정"},{"업체명":"IBK기업은행","RM":"김종환","SO":"박경민"},{"업체명":"하나은행","RM":"김종환","SO":"박경민"},{"업체명":"제주은행","RM":"김종환","SO":"육태우"},{"업체명":"부산은행","RM":"김종환","SO":"박경민"},{"업체명":"카카오뱅크","RM":"김종환","SO":"육태우"},{"업체명":"케이뱅크","RM":"김종환","SO":"육태우"},{"업체명":"수협은행","RM":"김종환","SO":"박경민"},{"업체명":"토스뱅크(직영업)","RM":"김종환","SO":"육태우"},{"업체명":"신한카드","RM":"김종환","SO":"박경민"},{"업체명":"우리카드","RM":"김종환","SO":"박선정"},{"업체명":"경기신용보증재단","RM":"김종환","SO":"박경민"},{"업체명":"사회적기업진흥원","RM":"김종환","SO":"박경민"},{"업체명":"신한캐피탈","RM":"김종환","SO":"육태우"},{"업체명":"리드코프","RM":"김종환","SO":"박선정"},{"업체명":"하나카드","RM":"김종환","SO":"박선정"},{"업체명":"신한지주","RM":"김종환","SO":"박경민"},{"업체명":"AJ네트웍스","RM":"김종환","SO":"박선정"},{"업체명":"신한투자증권","RM":"한영관","SO":"육태우"},{"업체명":"NH농협캐피탈","RM":"한영관","SO":"박선정"},{"업체명":"마스턴파트너스","RM":"한영관","SO":"박선정"},{"업체명":"NH벤처투자","RM":"한영관","SO":"박선정"},{"업체명":"롯데캐피탈","RM":"한영관","SO":"박경민"},{"업체명":"컴퍼니케이","RM":"한영관","SO":"박경민"},{"업체명":"엑스플로인베스트","RM":"한영관","SO":"박경민"},{"업체명":"하나벤처스","RM":"한영관","SO":"박경민"},{"업체명":"DSC인베스트","RM":"한영관","SO":"박경민"},{"업체명":"애큐온저축은행","RM":"한영관","SO":"육태우"},{"업체명":"애큐온캐피탈","RM":"한영관","SO":"육태우"},{"업체명":"코오롱인베스트먼트","RM":"한영관","SO":"박경민"},{"업체명":"Plan.H벤처스","RM":"한영관","SO":"박경민"},{"업체명":"메가존클라우드","RM":"한영관","SO":"박경민"},{"업체명":"건설공제조합","RM":"전힘찬","SO":"박경민"},{"업체명":"자본재공제조합","RM":"전힘찬","SO":"박경민"},{"업체명":"한국벤처캐피탈협회","RM":"전힘찬","SO":"박경민"},{"업체명":"KOVA벤처기업협회","RM":"전힘찬","SO":"박경민"},{"업체명":"인천창조경제혁신센터","RM":"전힘찬","SO":"박경민"},{"업체명":"하이서울기업협회","RM":"전힘찬","SO":"육태우"},{"업체명":"메인비즈협회","RM":"전힘찬","SO":"박경민"},{"업체명":"전기공사공제조합","RM":"전힘찬","SO":"박경민"},{"업체명":"기계설비건설공제조합","RM":"전힘찬","SO":"육태우"},{"업체명":"방위산업공제조합","RM":"전힘찬","SO":"박경민"},{"업체명":"이노비즈협회","RM":"전힘찬","SO":"박경민"},{"업체명":"대한기계설비건설협회","RM":"전힘찬","SO":"육태우"},{"업체명":"정부조달마스협회","RM":"전힘찬","SO":"박경민"},{"업체명":"카포스 서울조합","RM":"전힘찬","SO":"육태우"},{"업체명":"서울시자동차검사정비사업조합","RM":"전힘찬","SO":"육태우"},{"업체명":"소프트웨어공제조합","RM":"전힘찬","SO":"박경민"}];
 const KNOWN_SOS = ['박선정','박경민','육태우'];
 const KNOWN_ALL = [...new Set([...KNOWN_RMS,...KNOWN_SOS])];
@@ -1206,10 +1262,10 @@ function _fbToArrGlobal(v){
 }
 
 const FIXED_CARD_TARGET = {
-  '이창희': 1020000000,
-  '김종환':  1325000000,
-  '전힘찬':   600000000,
-  '한영관':   0,
+  '이창희':  870000000,
+  '김종환': 1075000000,
+  '한영관':  600000000,
+  '전힘찬':  400000000,
   '박선정':   750000000,
   '박경민':  1145000000,
   '육태우':  1050000000,
@@ -4454,6 +4510,330 @@ function closeInternalDetail(){
   m.classList.remove('on');
 }
 
+// =====================================================
+// 일정 엑셀 업로드/저장
+// =====================================================
+const SCHEDULE_KEY = 'tfr_schedule_v1';
+
+function handleScheduleExcel(file){
+  if(!file) return;
+  showLoading('일정 엑셀 파싱 중...');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      let headerRow = -1;
+      for(let i=0;i<Math.min(rows.length,5);i++){
+        if(rows[i].some(c=>String(c).includes('시작시간')||String(c).includes('시작'))) { headerRow=i; break; }
+      }
+      if(headerRow<0) headerRow=1;
+      const headers = rows[headerRow].map(h=>String(h).trim());
+      const iS = headers.findIndex(h=>h.includes('시작시간')||h.includes('시작'));
+      const iE = headers.findIndex(h=>h.includes('종료시간')||h.includes('종료'));
+      const iCal = headers.findIndex(h=>h.includes('캘린더'));
+      const iTitle = headers.findIndex(h=>h.includes('제목'));
+      const iContent = headers.findIndex(h=>h.includes('내용'));
+      const iReg = headers.findIndex(h=>h.includes('등록자'));
+      const iPart = headers.findIndex(h=>h.includes('참여자'));
+      const iPlace = headers.findIndex(h=>h.includes('장소'));
+      const schedules = [];
+      for(let i=headerRow+1;i<rows.length;i++){
+        const r=rows[i];
+        const startStr = String(r[iS]||'').trim();
+        if(!startStr) continue;
+        schedules.push({
+          start: startStr,
+          end: String(r[iE]||'').trim(),
+          cal: String(r[iCal]||'').trim(),
+          title: String(r[iTitle]||'').trim(),
+          content: String(r[iContent]||'').trim(),
+          reg: String(r[iReg]||'').trim(),
+          participants: String(r[iPart]||'').trim(),
+          place: String(r[iPlace]||'').trim(),
+        });
+      }
+      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
+      hideLoading();
+      showToast(`✅ 일정 ${schedules.length}건 업로드 완료`,'ok');
+      updateSchedulePreview(schedules);
+      document.getElementById('scheduleUploadStatus').innerHTML =
+        `<span style="color:var(--success)">✅ ${schedules.length}건 로드됨 · ${file.name}</span>`;
+      // 추출 탭이 열려있으면 자동 재렌더링
+      if(document.getElementById('tab-extract').classList.contains('on')){
+        const activeBtn = document.getElementById('extractBtnWork').className.includes('btn-s') ? 'weekly' : 'work';
+        renderExtractTab(activeBtn==='weekly'?'weekly':'work');
+      }
+    }catch(err){
+      hideLoading();
+      showToast('일정 엑셀 파싱 실패: '+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getScheduleData(){
+  try{ return JSON.parse(localStorage.getItem(SCHEDULE_KEY)||'[]'); }catch(e){ return []; }
+}
+
+function clearScheduleExcel(){
+  localStorage.removeItem(SCHEDULE_KEY);
+  document.getElementById('schedulePreview').textContent='일정 엑셀을 업로드하면 미리보기가 표시됩니다';
+  document.getElementById('scheduleUploadStatus').textContent='미업로드';
+  showToast('일정 초기화 완료','ok');
+  if(document.getElementById('tab-extract').classList.contains('on')) renderExtractTab('work');
+}
+
+function updateSchedulePreview(schedules){
+  const el = document.getElementById('schedulePreview');
+  if(!el) return;
+  const sales = schedules.filter(s=>s.cal.includes('영업추진'));
+  if(!sales.length){ el.textContent='영업추진회의 일정 없음'; return; }
+  el.innerHTML = sales.slice(0,10).map(s=>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--a1);font-weight:700">${s.start.substring(0,10)}</span>
+      <span style="margin-left:6px">${s.title}</span>
+      <span style="color:var(--t2);font-size:10px;margin-left:4px">[${s.participants}]</span>
+    </div>`
+  ).join('') + (sales.length>10?`<div style="color:var(--t2);font-size:10px;margin-top:4px">외 ${sales.length-10}건...</div>`:'');
+}
+
+// =====================================================
+// 추출 탭
+// =====================================================
+const EXTRACT_SO_LIST = [
+  {name:'박선정', title:'차장', key:'박선정'},
+  {name:'박경민', title:'과장', key:'박경민'},
+  {name:'육태우', title:'과장', key:'육태우'},
+];
+
+function renderExtractTab(mode){
+  document.getElementById('extractBtnWork').className = mode==='work' ? 'btn' : 'btn btn-s';
+  document.getElementById('extractBtnWeekly').className = mode==='weekly' ? 'btn' : 'btn btn-s';
+
+  const wr = getWeekRange();
+  // 다음주 시작일 (진행 예정 기준)
+  const nextStart = new Date(wr.thisEnd);
+  nextStart.setDate(wr.thisEnd.getDate() + 3); // 금요일 + 3 = 월요일
+  nextStart.setHours(0,0,0,0);
+
+  // 헤더 라벨 제거 (빈 문자열)
+  const lbl = document.getElementById('extractWeekLabel');
+  if(lbl) lbl.textContent = '';
+
+  if(mode==='work') renderExtractWork(wr, nextStart);
+  else renderExtractWeekly(wr);
+}
+
+// ── 업무진행현황 생성 ──
+function renderExtractWork(wr, nextStart){
+  const cos = getEffectiveCompanies();
+  const schedules = getScheduleData().filter(s=>s.cal.includes('영업추진'));
+  const el = document.getElementById('extractContent');
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+
+  const thisWeekLabel = `이번주 ${fmt(wr.thisStart)}(월)~${fmt(wr.thisEnd)}(금)`;
+  const nextWeekLabel = `진행 예정 (${fmt(nextStart)} 이후)`;
+
+  function getScheduleForSO(soKey, fromDate){
+    const nameVariants = soKey==='박경민'?['박경민','박경민B']:
+                         soKey==='육태우'?['육태우']:['박선정'];
+    return schedules.filter(s=>{
+      const startDate = new Date(s.start.substring(0,10));
+      if(startDate < fromDate) return false;
+      return nameVariants.some(n=>s.participants.includes(n)||s.reg.includes(n));
+    });
+  }
+
+  // 이번주 활동 (현재 진행중)
+  function getThisWeekActivity(soKey){
+    const nameVariants = soKey==='박경민'?['박경민']:
+                         soKey==='육태우'?['육태우']:['박선정'];
+    const activities = [];
+    for(const co of cos){
+      if(!nameVariants.some(n=>co.RM===n||co.SO===n)) continue;
+      const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)([^\n]*)/gm; let m;
+      while((m=re.exec(co.진행현황||''))!==null){
+        const mm=parseInt(m[1]),dd=parseInt(m[2]);
+        const d=new Date(new Date().getFullYear(),mm-1,dd);
+        if(d>=wr.thisStart&&d<=wr.thisEnd){
+          activities.push({date:`${mm}/${dd}`,co:co.업체명||'',txt:m[3].trim()});
+        }
+      }
+    }
+    return activities.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+
+  // 진행 예정 (다음주 이후 세일즈추진사항 언급 + 일정 엑셀)
+  function getPlannedActivity(soKey){
+    const nameVariants = soKey==='박경민'?['박경민']:
+                         soKey==='육태우'?['육태우']:['박선정'];
+    const planned = [];
+    for(const co of cos){
+      if(!nameVariants.some(n=>co.RM===n||co.SO===n)) continue;
+      const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)([^\n]*)/gm; let m;
+      while((m=re.exec(co.진행현황||''))!==null){
+        const mm=parseInt(m[1]),dd=parseInt(m[2]);
+        const d=new Date(new Date().getFullYear(),mm-1,dd);
+        if(d>=nextStart){
+          planned.push({date:`${mm}/${dd}`,co:co.업체명||'',txt:m[3].trim(),src:'word'});
+        }
+      }
+    }
+    const futureSched = getScheduleForSO(soKey, nextStart);
+    for(const s of futureSched){
+      const dt=new Date(s.start.substring(0,10));
+      planned.push({date:`${dt.getMonth()+1}/${dt.getDate()}`,co:'',txt:s.title+(s.content?` (${s.content.substring(0,40)})`:''),src:'cal'});
+    }
+    return planned.sort((a,b)=>a.date.localeCompare(b.date));
+  }
+
+  const cardBg='background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px';
+  const secLbl=(txt,col)=>`<div style="font-size:11px;font-weight:800;color:${col};letter-spacing:.6px;margin-bottom:8px;margin-top:14px">${txt}</div>`;
+
+  let html=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button onclick="copyExtractText()" class="btn btn-s">📋 전체 복사</button>
+  </div>`;
+
+  for(const so of EXTRACT_SO_LIST){
+    const acts=getThisWeekActivity(so.key);
+    const plans=getPlannedActivity(so.key);
+
+    const actHtml=acts.length
+      ?acts.map(a=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:var(--a1);font-weight:700;min-width:36px;display:inline-block">(${a.date})</span>
+          <span style="color:var(--t1);margin-left:4px">${a.co}</span>
+          ${a.txt?`<span style="color:var(--t2);margin-left:4px">${a.txt}</span>`:''}
+        </div>`).join('')
+      :`<div style="color:var(--t2);font-size:12px;padding:4px 0">이번주 활동 내역 없음</div>`;
+
+    const planHtml=plans.length
+      ?plans.map(p=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:#f59e0b;font-weight:700;min-width:36px;display:inline-block">(${p.date})</span>
+          ${p.co?`<span style="color:var(--t1);margin-left:4px">${p.co}</span>`:''}
+          ${p.txt?`<span style="color:var(--t2);margin-left:4px">${p.txt}</span>`:''}
+          <span style="font-size:10px;color:${p.src==='cal'?'#3b82f6':'var(--t2)'};margin-left:6px">${p.src==='cal'?'[일정]':'[추진현황]'}</span>
+        </div>`).join('')
+      :`<div style="color:var(--t2);font-size:12px;padding:4px 0">예정 내역 없음</div>`;
+
+    html+=`<div style="${cardBg}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:15px;font-weight:800;color:var(--t0)">${so.name} ${so.title}</div>
+        <div style="font-size:11px;color:var(--t2)">영업추진관리/지원</div>
+      </div>
+      ${secLbl(`🟢 현재 진행중 (${thisWeekLabel})`,'var(--success)')}
+      <div style="background:var(--bg2);border-radius:8px;padding:10px">${actHtml}</div>
+      ${secLbl(`🔵 진행 예정 (${nextWeekLabel})`,'#3b82f6')}
+      <div style="background:var(--bg2);border-radius:8px;padding:10px">${planHtml}</div>
+    </div>`;
+  }
+
+  el.innerHTML=html;
+  const sch=getScheduleData();
+  if(sch.length) updateSchedulePreview(sch);
+}
+
+// ── 주간보고 생성 (이번주 기준) ──
+function renderExtractWeekly(wr){
+  const el=document.getElementById('extractContent');
+  const cos=getEffectiveCompanies();
+  const wb=getWeeklyBase();
+  const prevSnap=wb?(wb.snapshot||[]):[];
+  const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+
+  // 이번주 활동 업체
+  const changedCos=cos.filter(co=>{
+    const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m;
+    while((m=re.exec(co.진행현황||''))!==null){
+      const mm=parseInt(m[1]),dd=parseInt(m[2]);
+      const d=new Date(new Date().getFullYear(),mm-1,dd);
+      if(d>=wr.thisStart&&d<=wr.thisEnd) return true;
+    }
+    return false;
+  });
+
+  const prevNames=new Set(prevSnap.map(c=>c.업체명||''));
+  const newCos=cos.filter(c=>c._stageNum>0&&c._stageNum<4&&!prevNames.has(c.업체명||''));
+
+  const prevMap={};
+  for(const c of prevSnap) prevMap[c.업체명||'']=c._stageNum||1;
+  const stageChanged=cos.filter(c=>{
+    const prev=prevMap[c.업체명||''];
+    return prev!==undefined&&prev!==c._stageNum;
+  });
+
+  const SLABELS=['','초기컨텍','실무협의','제안·MOU','계약·운영'];
+
+  let html=`<div style="background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--t0)">주간보고 · 이번주 ${fmt(wr.thisStart)}~${fmt(wr.thisEnd)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">세일즈추진팀 주간 활동 변동 내역</div>
+      </div>
+      <button onclick="copyWeeklyText()" class="btn btn-s">📋 복사</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+      ${[['방문미팅·Sales 활동',changedCos.length+'개 업체'],['신규 업체',newCos.length+'개'],['단계 변동',stageChanged.length+'건']]
+        .map(([l,v])=>`<div style="background:var(--bg2);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--a1)">${v}</div>
+          <div style="font-size:11px;color:var(--t2);margin-top:3px">${l}</div>
+        </div>`).join('')}
+    </div>`;
+
+  if(changedCos.length){
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px">■ 주요 활동</div>
+    <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-bottom:16px">`;
+    for(const co of changedCos){
+      const lines=[];
+      const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)([^\n]*)/gm; let m;
+      while((m=re.exec(co.진행현황||''))!==null){
+        const mm=parseInt(m[1]),dd=parseInt(m[2]);
+        const d=new Date(new Date().getFullYear(),mm-1,dd);
+        if(d>=wr.thisStart&&d<=wr.thisEnd) lines.push(`(${mm}/${dd}) ${m[3].trim()}`);
+      }
+      html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="font-weight:700;color:var(--t0)">${co.업체명}</span>
+        <span style="font-size:10px;color:var(--t2);margin-left:6px">${SLABELS[co._stageNum||1]}</span>
+        <div style="color:var(--t2);margin-top:3px;padding-left:8px">${lines.join('<br>')}</div>
+      </div>`;
+    }
+    html+='</div>';
+  }
+
+  if(newCos.length){
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px">■ 신규 업체 (${newCos.length}개)</div>
+    <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-bottom:16px">
+    ${newCos.map(c=>`<div style="padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+      <span style="font-weight:700;color:var(--success)">+ ${c.업체명}</span>
+      <span style="color:var(--t2);font-size:11px;margin-left:6px">${SLABELS[c._stageNum||1]} · SO:${c.SO||'-'}</span>
+    </div>`).join('')}
+    </div>`;
+  }
+
+  if(stageChanged.length){
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:8px">■ 파이프라인 단계 변동</div>
+    <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-bottom:16px">
+    ${stageChanged.map(c=>`<div style="padding:4px 0;font-size:12px;border-bottom:1px solid var(--border)">
+      <span style="font-weight:700;color:var(--t0)">${c.업체명}</span>
+      <span style="color:var(--t2);margin-left:8px">${SLABELS[prevMap[c.업체명||'']||1]} → </span>
+      <span style="color:var(--a1);font-weight:700">${SLABELS[c._stageNum||1]}</span>
+    </div>`).join('')}
+    </div>`;
+  }
+
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function copyExtractText(){
+  const el=document.getElementById('extractContent');
+  const txt=el?el.innerText:'';
+  navigator.clipboard.writeText(txt).then(()=>showToast('복사됐어요!','ok')).catch(()=>showToast('복사 실패','err'));
+}
+function copyWeeklyText(){ copyExtractText(); }
+
 function renderInternalTab(){
   const chartEl = document.getElementById('internalProductChart');
   const tableEl = document.getElementById('internalProductTable');
@@ -4686,7 +5066,7 @@ function renderRMSummary(){
     rmRevs[rm]=rev; totalActual+=rev;
   }
   // RM 목표 합계
-  const rmTargets={'이창희':1020000000,'김종환':1325000000,'전힘찬':600000000,'한영관':0};
+  const rmTargets={'이창희':870000000,'김종환':1075000000,'한영관':600000000,'전힘찬':400000000};
   const totalTarget=Object.values(rmTargets).reduce((a,b)=>a+b,0); // 29.45억
   const totalPct=totalTarget>0?Math.min(100,(totalActual/totalTarget)*100):0;
   const tc=totalPct>=80?'#3b82f6':totalPct>=50?'#3b82f6':totalPct>=20?'#60a5fa':'#93c5fd';
@@ -6068,7 +6448,7 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
   document.getElementById('tab-'+name).classList.add('on');
-  const idx={'dash':0,'admin':1,'internal':2}[name];
+  const idx={'dash':0,'admin':1,'internal':2,'extract':3}[name];
   document.querySelectorAll('.nav-btn')[idx].classList.add('on');
   if(name==='admin'){
     renderAdminTable(); renderPricingTable(); updateUploadHistory(); updateFilterOptions();
@@ -6077,8 +6457,9 @@ function switchTab(name){
     if(pSt&&DB.pricingExcel.length) pSt.innerHTML=`<span style='color:var(--success)'>✅ ${DB.pricingExcel.length}건 로드됨 (최근 업로드)</span>`;
   } else if(name==='internal'){
     renderInternalTab();
+  } else if(name==='extract'){
+    renderExtractTab('work');
   } else if(name==='dash'){
-    // 대시보드 탭 복귀: 차트 강제 재빌드 (canvas 가시 상태에서 실행)
     setTimeout(()=>{ if(charts.rmStage){charts.rmStage.destroy();charts.rmStage=null;} renderCharts(); },50);
   }
 }
@@ -6269,7 +6650,7 @@ async function loadChangeLogFromDB(){
 const GH_COMMIT_KEY='ghCommitLog_v1';
 async function syncGitHubCommits(){
   // ── 하드코딩된 GitHub 커밋 이력 (push 시 자동 갱신) ──
-  const GH_COMMITS=[{"sha": "01b9d81", "ts": "2026-07-21 11:12:01", "type": "배포", "field": "fix: applyVisitPatchToDB saveDB 제거(무한루프방지) + applyRMSOMap 구코드 잔재 제거", "before": "", "after": "01b9d81", "author": "techfinra"}, {"sha": "b1eddc8", "ts": "2026-07-21 09:45:25", "type": "배포", "field": "fix: 업로드 안정화 - rowStatus 무관 diff체크, toSave에 applyRMSOMap 적용, commitSave/리스너 후 패치", "before": "", "after": "b1eddc8", "author": "techfinra"}, {"sha": "9967a73", "ts": "2026-07-21 09:42:06", "type": "배포", "field": "fix: 업로드 후 Firebase 리스너가 이전 데이터로 덮어쓰는 버그 수정 - 저장 완료 후 3초간 리스너 무시", "before": "", "after": "9967a73", "author": "techfinra"}, {"sha": "ce58d5e", "ts": "2026-07-21 08:49:39", "type": "배포", "field": "fix: BNK캐피탈 7/16 방문미팅 DB.companies 직접 패치 (한영관 추가) + init 시 자동 적용", "before": "", "after": "ce58d5e", "author": "techfinra"}, {"sha": "0329e4b", "ts": "2026-07-21 08:48:15", "type": "배포", "field": "fix: BNK캐피탈 방문미팅 7/21 한영관 하드코딩 추가 (applyRMSOMap VISIT_PATCH)", "before": "", "after": "0329e4b", "author": "techfinra"}, {"sha": "be866ad", "ts": "2026-07-20 09:52:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (중진공팩토링 0.50억, 중진공네트워크론 2.90억)", "before": "", "after": "be866ad", "author": "techfinra"}, {"sha": "3dc3f72", "ts": "2026-07-20 09:38:17", "type": "배포", "field": "feat: RM/SO 분장표(87개 업체) + applyRMSOMap + 한영관 오버레이 제거 + 크레디뷰 253,565,000원", "before": "", "after": "3dc3f72", "author": "techfinra"}, {"sha": "3fe322a", "ts": "2026-07-13 13:31:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (수출입 0.44억, 중진공팩토링 0.47억, 중진공네트워크론 2.79억, 신한 0.01억)", "before": "", "after": "3fe322a", "author": "techfinra"}, {"sha": "bf0e0c8", "ts": "2026-07-13 13:27:16", "type": "배포", "field": "feat: Weekly Trend 그래프에서 신규업체 선 제거 (방문미팅+Sales활동 2선만)", "before": "", "after": "bf0e0c8", "author": "techfinra"}, {"sha": "53b1542", "ts": "2026-07-13 13:25:49", "type": "배포", "field": "hotfix: thisEntry hist.push 누락 복원 - 이번주 그래프 미표시 버그 수정", "before": "", "after": "53b1542", "author": "techfinra"}, {"sha": "0893124", "ts": "2026-07-13 13:24:33", "type": "배포", "field": "fix: 저번주 lastEntry 신규업체 수치 savedHist에서 보존 (newCo:0 덮어쓰기 방지)", "before": "", "after": "0893124", "author": "techfinra"}, {"sha": "33dc29b", "ts": "2026-07-13 13:23:38", "type": "배포", "field": "fix: 저번주 그래프 수치 실시간 계산으로 수정 (localStorage 구버전 데이터 무시)", "before": "", "after": "33dc29b", "author": "techfinra"}, {"sha": "6f07f43", "ts": "2026-07-13 13:01:16", "type": "배포", "field": "fix: 이번주 그래프 수치 실시간 반영 (seed에서 현재주차 제거) + 크레디뷰 243,525,000원 + JSON 개행 이스케이프 수정", "before": "", "after": "6f07f43", "author": "techfinra"}, {"sha": "f065812", "ts": "2026-07-07 07:59:58", "type": "배포", "field": "hotfix: revChartHtml const 중복 선언 → 대입으로 수정", "before": "", "after": "f065812", "author": "techfinra"}, {"sha": "d038aaa", "ts": "2026-07-07 07:58:19", "type": "배포", "field": "fix: Revenue Trend 그래프 - localStorage 없어도 현재 매출 직접 계산해서 즉시 표시", "before": "", "after": "d038aaa", "author": "techfinra"}, {"sha": "9a1b0b7", "ts": "2026-07-07 07:56:31", "type": "배포", "field": "hotfix: openKpiDetail revChartHtml 초기화 + innerHTML 연산자 우선순위 버그 수정", "before": "", "after": "9a1b0b7", "author": "techfinra"}, {"sha": "ab823be", "ts": "2026-07-07 07:54:40", "type": "배포", "field": "feat: Sales 실적 매출 팝업 상단 서비스별 5선 Revenue Trend 그래프 추가", "before": "", "after": "ab823be", "author": "techfinra"}, {"sha": "9e64da6", "ts": "2026-07-07 07:48:19", "type": "배포", "field": "feat: 한영관 카드 불투명 오버레이 + 업데이트 예정 배지 추가", "before": "", "after": "9e64da6", "author": "techfinra"}, {"sha": "63010f7", "ts": "2026-07-07 07:43:41", "type": "배포", "field": "feat: RM 한영관 추가 (목표 0원, 개인별 Sales 활동 현황 포함)", "before": "", "after": "63010f7", "author": "techfinra"}, {"sha": "c455510", "ts": "2026-07-07 07:41:07", "type": "배포", "field": "fix: 팝업 타이틀 '지난주 대비' 제거 + 'B 이번주 신규' 텍스트 수정", "before": "", "after": "c455510", "author": "techfinra"}, {"sha": "7cb2803", "ts": "2026-07-07 07:39:18", "type": "배포", "field": "fix: C·신규업체 배지 색상 초록→보라색", "before": "", "after": "7cb2803", "author": "techfinra"}, {"sha": "88e34fc", "ts": "2026-07-07 07:37:15", "type": "배포", "field": "fix: Weekly Trend 그래프 summaryCards 바로 위로 + 여백 조정", "before": "", "after": "88e34fc", "author": "techfinra"}, {"sha": "75a6f97", "ts": "2026-07-06 18:04:49", "type": "배포", "field": "fix: 이번주활동 팝업 Weekly Trend 그래프 다시 맨 아래로 복원", "before": "", "after": "75a6f97", "author": "techfinra"}, {"sha": "e67df92", "ts": "2026-07-06 18:02:37", "type": "배포", "field": "feat: 이번주활동 팝업 그래프 상단 배치 + Weekly Trend 타이틀 디자인 개선", "before": "", "after": "e67df92", "author": "techfinra"}, {"sha": "209ac2f", "ts": "2026-07-06 14:10:29", "type": "배포", "field": "feat: 개인별 활동 팝업에 담당자별 5주 방문미팅/Sales활동 추세 그래프 추가", "before": "", "after": "209ac2f", "author": "techfinra"}, {"sha": "2d91f73", "ts": "2026-07-06 13:59:28", "type": "배포", "field": "fix: 마지막주 X축 레이블 점 바로 아래 그래프 내부 중앙 배치", "before": "", "after": "2d91f73", "author": "techfinra"}, {"sha": "d04c33b", "ts": "2026-07-06 13:56:49", "type": "배포", "field": "feat: 그래프 마지막점 숫자 오른쪽 배치 + X축 이번주 레이블 한줄 오른쪽", "before": "", "after": "d04c33b", "author": "techfinra"}, {"sha": "876e8e2", "ts": "2026-07-06 13:52:45", "type": "배포", "field": "fix: 그래프 모든 점 클릭 가능(pointer-events:all) + 이번주 레이블 두줄 + 여백 조정", "before": "", "after": "876e8e2", "author": "techfinra"}, {"sha": "b992b91", "ts": "2026-07-06 13:47:37", "type": "배포", "field": "fix: 그래프 직선+라이트모드배경+모든점 클릭가능 + 서머리카드 클릭/▶클릭 제거", "before": "", "after": "b992b91", "author": "techfinra"}, {"sha": "208ea4e", "ts": "2026-07-06 13:44:19", "type": "배포", "field": "feat: 그래프 고급화(글로우/스플라인/데이터레이블) + 서머리카드 클릭기능/▶클릭 제거", "before": "", "after": "208ea4e", "author": "techfinra"}, {"sha": "def27d6", "ts": "2026-07-06 13:41:25", "type": "배포", "field": "fix: WH_SEED 화~월 기준 전면 재계산 (06/23주 방문미팅 8건 등) + 크레디뷰 항목 통합 (경영진단보고서→크레디뷰)", "before": "", "after": "def27d6", "author": "techfinra"}, {"sha": "a379321", "ts": "2026-07-06 13:31:53", "type": "배포", "field": "feat: 과거 주차 visitList/actList 상세 데이터 전체 반영 + 단일점 클릭 가능", "before": "", "after": "a379321", "author": "techfinra"}, {"sha": "696a68b", "ts": "2026-07-06 13:27:10", "type": "배포", "field": "fix: 06/23~06/29 방문미팅 1→8건 수정 (전사 기준, 신한캐피탈+신한투자증권+우리은행+NH농협은행+키움인베스트먼트+메인비즈협회+전", "before": "", "after": "696a68b", "author": "techfinra"}, {"sha": "f185376", "ts": "2026-07-06 13:25:56", "type": "배포", "field": "fix: WH_SEED label 전면 교정 - wKey 기준 정확한 주차 범위로 수정", "before": "", "after": "f185376", "author": "techfinra"}, {"sha": "9a2ad23", "ts": "2026-07-06 13:23:22", "type": "배포", "field": "fix: seed 수치 docx 재파싱 기준으로 전면 교정 (06/23주 visit:1,act:13 확인)", "before": "", "after": "9a2ad23", "author": "techfinra"}, {"sha": "4975cf9", "ts": "2026-07-06 13:20:49", "type": "배포", "field": "fix: 그래프 날짜짤림/밝기개선 + seed 강제갱신 + 점 클릭시 해당항목만 팝업", "before": "", "after": "4975cf9", "author": "techfinra"}, {"sha": "d8ca9e3", "ts": "2026-07-06 13:16:16", "type": "배포", "field": "hotfix: _wKey 선언 순서 오류 수정 - summaryCards 앞으로 이동 (팝업 안 뜨는 버그)", "before": "", "after": "d8ca9e3", "author": "techfinra"}, {"sha": "6f594a7", "ts": "2026-07-06 13:14:23", "type": "배포", "field": "fix: wKey 포맷 통일(YYYYMMDD) + 서머리카드 클릭시 상세 팝업 (방문미팅/Sales활동/신규업체)", "before": "", "after": "6f594a7", "author": "techfinra"}, {"sha": "f512800", "ts": "2026-07-06 13:10:35", "type": "배포", "field": "hotfix: openKpiDetail 함수명 중복 선언 오류 수정 (JS 파싱 실패 원인)", "before": "", "after": "f512800", "author": "techfinra"}, {"sha": "ddf02ab", "ts": "2026-07-06 13:08:16", "type": "배포", "field": "feat: 주차별 팝업 방문미팅/Sales활동/신규업체 상세 테이블 + 히스토리 상세 데이터 저장", "before": "", "after": "ddf02ab", "author": "techfinra"}, {"sha": "6e4f01c", "ts": "2026-07-06 13:03:51", "type": "배포", "field": "fix: 주차별 추세 그래프 최근 5주(한달)만 표시", "before": "", "after": "6e4f01c", "author": "techfinra"}, {"sha": "bb20165", "ts": "2026-07-06 12:59:56", "type": "배포", "field": "feat: 주차별 그래프 점 클릭 → 2중 모달 상세 팝업 (기존 팝업 유지 + 위에 오버레이)", "before": "", "after": "bb20165", "author": "techfinra"}, {"sha": "86925ac", "ts": "2026-07-06 12:06:52", "type": "배포", "field": "feat: 주차별 추세 그래프 과거 데이터 seed 적재 (docx 파싱 기준 25주치)", "before": "", "after": "86925ac", "author": "techfinra"}, {"sha": "ccb68dd", "ts": "2026-07-06 12:02:39", "type": "배포", "field": "fix: 주차별 추세 그래프 변수명 오류 수정 (thisWeekActs→newActivities, newCoList→newCos)", "before": "", "after": "ccb68dd", "author": "techfinra"}, {"sha": "bce908e", "ts": "2026-07-06 11:58:57", "type": "배포", "field": "feat: 이번주 활동 팝업 하단 주차별 추세 그래프 추가 (방문미팅/Sales활동/신규업체, 점 클릭 상세 팝업)", "before": "", "after": "bce908e", "author": "techfinra"}, {"sha": "dcd8824", "ts": "2026-07-06 08:26:02", "type": "배포", "field": "fix: 신용등급확인서(MASS) 227,560,000원으로 업데이트 (2026.07.06)", "before": "", "after": "dcd8824", "author": "techfinra"}, {"sha": "6b374a2", "ts": "2026-07-03 16:53:31", "type": "배포", "field": "fix: 금융중개서비스 HC 항목 byStage 카운트 완전 제외 (테이블 5단계 열에서 미표시)", "before": "", "after": "6b374a2", "author": "techfinra"}, {"sha": "96372eb", "ts": "2026-07-03 16:51:47", "type": "배포", "field": "fix: 팩토링/네트워크 HC 항목 팝업+집계 모두 계약완료에서 제외, 금융중개(HC) 배지로 표시", "before": "", "after": "96372eb", "author": "techfinra"}, {"sha": "eba77b6", "ts": "2026-07-03 16:48:07", "type": "배포", "field": "fix: 내부관리 타겟제품별 - 8단계→5단계(계약완료) 라벨 변경, 네트워크/팩토링 계약완료 카운트 제외", "before": "", "after": "eba77b6", "author": "techfinra"}, {"sha": "6a95283", "ts": "2026-07-03 16:35:02", "type": "배포", "field": "feat: 내부관리 타겟제품별 금액 상세 - 파이프라인 단계별(1/2/3/4/8단계) 건수 열로 변경", "before": "", "after": "6a95283", "author": "techfinra"}];
+  const GH_COMMITS=[{"sha": "71e7f19", "ts": "2026-07-24 17:17:09", "type": "배포", "field": "feat: STEP1+2 완료 - 주간기준 목요일전환(월~금) + 파이프라인 4단계통일 + HC/CE 정리", "before": "", "after": "71e7f19", "author": "techfinra"}, {"sha": "01b9d81", "ts": "2026-07-21 11:12:01", "type": "배포", "field": "fix: applyVisitPatchToDB saveDB 제거(무한루프방지) + applyRMSOMap 구코드 잔재 제거", "before": "", "after": "01b9d81", "author": "techfinra"}, {"sha": "b1eddc8", "ts": "2026-07-21 09:45:25", "type": "배포", "field": "fix: 업로드 안정화 - rowStatus 무관 diff체크, toSave에 applyRMSOMap 적용, commitSave/리스너 후 패치", "before": "", "after": "b1eddc8", "author": "techfinra"}, {"sha": "9967a73", "ts": "2026-07-21 09:42:06", "type": "배포", "field": "fix: 업로드 후 Firebase 리스너가 이전 데이터로 덮어쓰는 버그 수정 - 저장 완료 후 3초간 리스너 무시", "before": "", "after": "9967a73", "author": "techfinra"}, {"sha": "ce58d5e", "ts": "2026-07-21 08:49:39", "type": "배포", "field": "fix: BNK캐피탈 7/16 방문미팅 DB.companies 직접 패치 (한영관 추가) + init 시 자동 적용", "before": "", "after": "ce58d5e", "author": "techfinra"}, {"sha": "0329e4b", "ts": "2026-07-21 08:48:15", "type": "배포", "field": "fix: BNK캐피탈 방문미팅 7/21 한영관 하드코딩 추가 (applyRMSOMap VISIT_PATCH)", "before": "", "after": "0329e4b", "author": "techfinra"}, {"sha": "be866ad", "ts": "2026-07-20 09:52:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (중진공팩토링 0.50억, 중진공네트워크론 2.90억)", "before": "", "after": "be866ad", "author": "techfinra"}, {"sha": "3dc3f72", "ts": "2026-07-20 09:38:17", "type": "배포", "field": "feat: RM/SO 분장표(87개 업체) + applyRMSOMap + 한영관 오버레이 제거 + 크레디뷰 253,565,000원", "before": "", "after": "3dc3f72", "author": "techfinra"}, {"sha": "3fe322a", "ts": "2026-07-13 13:31:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (수출입 0.44억, 중진공팩토링 0.47억, 중진공네트워크론 2.79억, 신한 0.01억)", "before": "", "after": "3fe322a", "author": "techfinra"}, {"sha": "bf0e0c8", "ts": "2026-07-13 13:27:16", "type": "배포", "field": "feat: Weekly Trend 그래프에서 신규업체 선 제거 (방문미팅+Sales활동 2선만)", "before": "", "after": "bf0e0c8", "author": "techfinra"}, {"sha": "53b1542", "ts": "2026-07-13 13:25:49", "type": "배포", "field": "hotfix: thisEntry hist.push 누락 복원 - 이번주 그래프 미표시 버그 수정", "before": "", "after": "53b1542", "author": "techfinra"}, {"sha": "0893124", "ts": "2026-07-13 13:24:33", "type": "배포", "field": "fix: 저번주 lastEntry 신규업체 수치 savedHist에서 보존 (newCo:0 덮어쓰기 방지)", "before": "", "after": "0893124", "author": "techfinra"}, {"sha": "33dc29b", "ts": "2026-07-13 13:23:38", "type": "배포", "field": "fix: 저번주 그래프 수치 실시간 계산으로 수정 (localStorage 구버전 데이터 무시)", "before": "", "after": "33dc29b", "author": "techfinra"}, {"sha": "6f07f43", "ts": "2026-07-13 13:01:16", "type": "배포", "field": "fix: 이번주 그래프 수치 실시간 반영 (seed에서 현재주차 제거) + 크레디뷰 243,525,000원 + JSON 개행 이스케이프 수정", "before": "", "after": "6f07f43", "author": "techfinra"}, {"sha": "f065812", "ts": "2026-07-07 07:59:58", "type": "배포", "field": "hotfix: revChartHtml const 중복 선언 → 대입으로 수정", "before": "", "after": "f065812", "author": "techfinra"}, {"sha": "d038aaa", "ts": "2026-07-07 07:58:19", "type": "배포", "field": "fix: Revenue Trend 그래프 - localStorage 없어도 현재 매출 직접 계산해서 즉시 표시", "before": "", "after": "d038aaa", "author": "techfinra"}, {"sha": "9a1b0b7", "ts": "2026-07-07 07:56:31", "type": "배포", "field": "hotfix: openKpiDetail revChartHtml 초기화 + innerHTML 연산자 우선순위 버그 수정", "before": "", "after": "9a1b0b7", "author": "techfinra"}, {"sha": "ab823be", "ts": "2026-07-07 07:54:40", "type": "배포", "field": "feat: Sales 실적 매출 팝업 상단 서비스별 5선 Revenue Trend 그래프 추가", "before": "", "after": "ab823be", "author": "techfinra"}, {"sha": "9e64da6", "ts": "2026-07-07 07:48:19", "type": "배포", "field": "feat: 한영관 카드 불투명 오버레이 + 업데이트 예정 배지 추가", "before": "", "after": "9e64da6", "author": "techfinra"}, {"sha": "63010f7", "ts": "2026-07-07 07:43:41", "type": "배포", "field": "feat: RM 한영관 추가 (목표 0원, 개인별 Sales 활동 현황 포함)", "before": "", "after": "63010f7", "author": "techfinra"}, {"sha": "c455510", "ts": "2026-07-07 07:41:07", "type": "배포", "field": "fix: 팝업 타이틀 '지난주 대비' 제거 + 'B 이번주 신규' 텍스트 수정", "before": "", "after": "c455510", "author": "techfinra"}, {"sha": "7cb2803", "ts": "2026-07-07 07:39:18", "type": "배포", "field": "fix: C·신규업체 배지 색상 초록→보라색", "before": "", "after": "7cb2803", "author": "techfinra"}, {"sha": "88e34fc", "ts": "2026-07-07 07:37:15", "type": "배포", "field": "fix: Weekly Trend 그래프 summaryCards 바로 위로 + 여백 조정", "before": "", "after": "88e34fc", "author": "techfinra"}, {"sha": "75a6f97", "ts": "2026-07-06 18:04:49", "type": "배포", "field": "fix: 이번주활동 팝업 Weekly Trend 그래프 다시 맨 아래로 복원", "before": "", "after": "75a6f97", "author": "techfinra"}, {"sha": "e67df92", "ts": "2026-07-06 18:02:37", "type": "배포", "field": "feat: 이번주활동 팝업 그래프 상단 배치 + Weekly Trend 타이틀 디자인 개선", "before": "", "after": "e67df92", "author": "techfinra"}, {"sha": "209ac2f", "ts": "2026-07-06 14:10:29", "type": "배포", "field": "feat: 개인별 활동 팝업에 담당자별 5주 방문미팅/Sales활동 추세 그래프 추가", "before": "", "after": "209ac2f", "author": "techfinra"}, {"sha": "2d91f73", "ts": "2026-07-06 13:59:28", "type": "배포", "field": "fix: 마지막주 X축 레이블 점 바로 아래 그래프 내부 중앙 배치", "before": "", "after": "2d91f73", "author": "techfinra"}, {"sha": "d04c33b", "ts": "2026-07-06 13:56:49", "type": "배포", "field": "feat: 그래프 마지막점 숫자 오른쪽 배치 + X축 이번주 레이블 한줄 오른쪽", "before": "", "after": "d04c33b", "author": "techfinra"}, {"sha": "876e8e2", "ts": "2026-07-06 13:52:45", "type": "배포", "field": "fix: 그래프 모든 점 클릭 가능(pointer-events:all) + 이번주 레이블 두줄 + 여백 조정", "before": "", "after": "876e8e2", "author": "techfinra"}, {"sha": "b992b91", "ts": "2026-07-06 13:47:37", "type": "배포", "field": "fix: 그래프 직선+라이트모드배경+모든점 클릭가능 + 서머리카드 클릭/▶클릭 제거", "before": "", "after": "b992b91", "author": "techfinra"}, {"sha": "208ea4e", "ts": "2026-07-06 13:44:19", "type": "배포", "field": "feat: 그래프 고급화(글로우/스플라인/데이터레이블) + 서머리카드 클릭기능/▶클릭 제거", "before": "", "after": "208ea4e", "author": "techfinra"}, {"sha": "def27d6", "ts": "2026-07-06 13:41:25", "type": "배포", "field": "fix: WH_SEED 화~월 기준 전면 재계산 (06/23주 방문미팅 8건 등) + 크레디뷰 항목 통합 (경영진단보고서→크레디뷰)", "before": "", "after": "def27d6", "author": "techfinra"}, {"sha": "a379321", "ts": "2026-07-06 13:31:53", "type": "배포", "field": "feat: 과거 주차 visitList/actList 상세 데이터 전체 반영 + 단일점 클릭 가능", "before": "", "after": "a379321", "author": "techfinra"}, {"sha": "696a68b", "ts": "2026-07-06 13:27:10", "type": "배포", "field": "fix: 06/23~06/29 방문미팅 1→8건 수정 (전사 기준, 신한캐피탈+신한투자증권+우리은행+NH농협은행+키움인베스트먼트+메인비즈협회+전", "before": "", "after": "696a68b", "author": "techfinra"}, {"sha": "f185376", "ts": "2026-07-06 13:25:56", "type": "배포", "field": "fix: WH_SEED label 전면 교정 - wKey 기준 정확한 주차 범위로 수정", "before": "", "after": "f185376", "author": "techfinra"}, {"sha": "9a2ad23", "ts": "2026-07-06 13:23:22", "type": "배포", "field": "fix: seed 수치 docx 재파싱 기준으로 전면 교정 (06/23주 visit:1,act:13 확인)", "before": "", "after": "9a2ad23", "author": "techfinra"}, {"sha": "4975cf9", "ts": "2026-07-06 13:20:49", "type": "배포", "field": "fix: 그래프 날짜짤림/밝기개선 + seed 강제갱신 + 점 클릭시 해당항목만 팝업", "before": "", "after": "4975cf9", "author": "techfinra"}, {"sha": "d8ca9e3", "ts": "2026-07-06 13:16:16", "type": "배포", "field": "hotfix: _wKey 선언 순서 오류 수정 - summaryCards 앞으로 이동 (팝업 안 뜨는 버그)", "before": "", "after": "d8ca9e3", "author": "techfinra"}, {"sha": "6f594a7", "ts": "2026-07-06 13:14:23", "type": "배포", "field": "fix: wKey 포맷 통일(YYYYMMDD) + 서머리카드 클릭시 상세 팝업 (방문미팅/Sales활동/신규업체)", "before": "", "after": "6f594a7", "author": "techfinra"}, {"sha": "f512800", "ts": "2026-07-06 13:10:35", "type": "배포", "field": "hotfix: openKpiDetail 함수명 중복 선언 오류 수정 (JS 파싱 실패 원인)", "before": "", "after": "f512800", "author": "techfinra"}, {"sha": "ddf02ab", "ts": "2026-07-06 13:08:16", "type": "배포", "field": "feat: 주차별 팝업 방문미팅/Sales활동/신규업체 상세 테이블 + 히스토리 상세 데이터 저장", "before": "", "after": "ddf02ab", "author": "techfinra"}, {"sha": "6e4f01c", "ts": "2026-07-06 13:03:51", "type": "배포", "field": "fix: 주차별 추세 그래프 최근 5주(한달)만 표시", "before": "", "after": "6e4f01c", "author": "techfinra"}, {"sha": "bb20165", "ts": "2026-07-06 12:59:56", "type": "배포", "field": "feat: 주차별 그래프 점 클릭 → 2중 모달 상세 팝업 (기존 팝업 유지 + 위에 오버레이)", "before": "", "after": "bb20165", "author": "techfinra"}, {"sha": "86925ac", "ts": "2026-07-06 12:06:52", "type": "배포", "field": "feat: 주차별 추세 그래프 과거 데이터 seed 적재 (docx 파싱 기준 25주치)", "before": "", "after": "86925ac", "author": "techfinra"}, {"sha": "ccb68dd", "ts": "2026-07-06 12:02:39", "type": "배포", "field": "fix: 주차별 추세 그래프 변수명 오류 수정 (thisWeekActs→newActivities, newCoList→newCos)", "before": "", "after": "ccb68dd", "author": "techfinra"}, {"sha": "bce908e", "ts": "2026-07-06 11:58:57", "type": "배포", "field": "feat: 이번주 활동 팝업 하단 주차별 추세 그래프 추가 (방문미팅/Sales활동/신규업체, 점 클릭 상세 팝업)", "before": "", "after": "bce908e", "author": "techfinra"}, {"sha": "dcd8824", "ts": "2026-07-06 08:26:02", "type": "배포", "field": "fix: 신용등급확인서(MASS) 227,560,000원으로 업데이트 (2026.07.06)", "before": "", "after": "dcd8824", "author": "techfinra"}, {"sha": "6b374a2", "ts": "2026-07-03 16:53:31", "type": "배포", "field": "fix: 금융중개서비스 HC 항목 byStage 카운트 완전 제외 (테이블 5단계 열에서 미표시)", "before": "", "after": "6b374a2", "author": "techfinra"}, {"sha": "96372eb", "ts": "2026-07-03 16:51:47", "type": "배포", "field": "fix: 팩토링/네트워크 HC 항목 팝업+집계 모두 계약완료에서 제외, 금융중개(HC) 배지로 표시", "before": "", "after": "96372eb", "author": "techfinra"}, {"sha": "eba77b6", "ts": "2026-07-03 16:48:07", "type": "배포", "field": "fix: 내부관리 타겟제품별 - 8단계→5단계(계약완료) 라벨 변경, 네트워크/팩토링 계약완료 카운트 제외", "before": "", "after": "eba77b6", "author": "techfinra"}];
   try{
     let logs=[];
     try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
