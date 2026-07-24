@@ -483,7 +483,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
       <div id="serviceProgress" style="margin-top:10px;flex:1"></div>
     </div>
     <div class="card" style="display:flex;flex-direction:column">
-      <div class="card-title">파이프라인 현황 <span style="font-size:10px;font-weight:400;color:var(--t2);margin-left:6px">5단계 기준 · 막대 클릭 시 업체 목록</span></div>
+      <div class="card-title">파이프라인 현황 <span style="font-size:10px;font-weight:400;color:var(--t2);margin-left:6px">4단계 기준 · 막대 클릭 시 업체 목록</span></div>
       <div id="pipelineChart" style="flex:1;display:flex;flex-direction:column;margin-top:8px"></div>
     </div>
   </div>
@@ -1119,44 +1119,28 @@ function countVisitMeetings(person, cos, fromDate, toDate){
 // 예) 7/3(금) → 6/30(화)~7/6(월), 7/7(월) → 6/30(화)~7/6(월), 7/11(금) → 7/7(화)~7/13(월)
 // 수/목은 이전 주(화~월) 범위 유지
 function getWeekRange(){
-  const today = new Date(); today.setHours(23,59,59,999);
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const dow = todayStart.getDay(); // 0=일,1=월,2=화,3=수,4=목,5=금,6=토
+  const dow = todayStart.getDay(); // 0=일,1=월,...,4=목,...,6=토
 
-  // 금요일(5) 기준으로 "이번 주 월요일"을 구함
-  // 금/토/일/월/화/수/목 → 각각 며칠 뒤 월요일(이번주 끝)까지 남은 날 계산
-  // dow=5(금): 다음 월요일까지 3일 → 이번주 월 = today+3
-  // dow=6(토): 다음 월요일까지 2일 → 이번주 월 = today+2
-  // dow=0(일): 다음 월요일까지 1일 → 이번주 월 = today+1
-  // dow=1(월): 이번주 월 = today
-  // dow=2(화): 이번주 월 = today-1 (금요일 기준 이미 갱신됨)
-  // dow=3(수): 이번주 월 = today-8 (지난 주 화~월 범위 유지)
-  // dow=4(목): 이번주 월 = today-7 (지난 주 화~월 범위 유지)
-
-  let daysToMon;
-  if(dow===5) daysToMon=3;       // 금 → +3
-  else if(dow===6) daysToMon=2;  // 토 → +2
-  else if(dow===0) daysToMon=1;  // 일 → +1
-  else if(dow===1) daysToMon=0;  // 월 → 오늘이 월
-  else if(dow===2) daysToMon=-1; // 화 → 어제가 월
-  else if(dow===3) daysToMon=-2; // 수 → 이전 주 월 유지
-  else              daysToMon=-3; // 목 → 이전 주 월 유지
-
-  const thisMon = new Date(todayStart);
-  thisMon.setDate(todayStart.getDate() + daysToMon);
-
-  // 이번주: 그 월요일 기준 화~월 (월-6일 ~ 월)
-  const thisStart = new Date(thisMon);
-  thisStart.setDate(thisMon.getDate() - 6);
+  // ── 목요일 전환 기준: 이번주 월~금 ──
+  // 목요일이 되면 "이번 주"가 이번주 월~금으로 전환됨
+  // 목(4): 이번주 월 = 오늘-3 / 금(5): 오늘-4 / 토(6): 오늘-5 / 일(0): 오늘-6
+  // 월(1): 아직 지난주 월 = 오늘-7 / 화(2): 오늘-8 / 수(3): 오늘-9
+  const daysToMon = dow===4?3 : dow===5?4 : dow===6?5 : dow===0?6 : dow===1?7 : dow===2?8 : 9;
+  const thisStart = new Date(todayStart);
+  thisStart.setDate(todayStart.getDate() - daysToMon);
   thisStart.setHours(0,0,0,0);
-  const thisEnd = new Date(thisMon);
+
+  // 이번주 금요일 = 월요일 + 4일
+  const thisEnd = new Date(thisStart);
+  thisEnd.setDate(thisStart.getDate() + 4);
   thisEnd.setHours(23,59,59,999);
 
-  // 지난주: 이번주 시작 - 7일 ~ 이번주 시작 - 1일
+  // 지난주 월요일 ~ 금요일
   const lastStart = new Date(thisStart);
   lastStart.setDate(thisStart.getDate() - 7);
-  const lastEnd = new Date(thisStart);
-  lastEnd.setDate(thisStart.getDate() - 1);
+  const lastEnd = new Date(lastStart);
+  lastEnd.setDate(lastStart.getDate() + 4);
   lastEnd.setHours(23,59,59,999);
 
   return { thisStart, thisEnd, lastStart, lastEnd };
@@ -1165,8 +1149,17 @@ function getWeekRange(){
 // ── Weekly Anchor (주간 고정 비교 기준) ──
 // 화요일 기준 주차 키 반환 예: "2026-06-17" (이번 주 화요일 날짜)
 function getWeekKey(){
-  const {thisStart}=getWeekRange();
-  return `${thisStart.getFullYear()}-${String(thisStart.getMonth()+1).padStart(2,'0')}-${String(thisStart.getDate()).padStart(2,'0')}`;
+  // 비교 기준 리셋: 매주 목요일에 새 weekKey로 바뀜
+  // 목(4)/금(5)/토(6)/일(0)/월(1)/화(2)/수(3) → 모두 같은 주의 목요일 날짜를 key로 사용
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const dow = todayStart.getDay(); // 0=일,1=월,...,4=목,...
+  // 이번 주 목요일까지 남은/지난 일수
+  // 목(4)=0, 금(5)=-1, 토(6)=-2, 일(0)=+4, 월(1)=+3, 화(2)=+2, 수(3)=+1
+  const daysToThu = dow===0 ? 4 : dow===1 ? 3 : dow===2 ? 2 : dow===3 ? 1 :
+                   dow===4 ? 0 : dow===5 ? -1 : -2;
+  const thu = new Date(todayStart);
+  thu.setDate(todayStart.getDate() + daysToThu);
+  return `${thu.getFullYear()}-${String(thu.getMonth()+1).padStart(2,'0')}-${String(thu.getDate()).padStart(2,'0')}`;
 }
 
 // 현재 weeklyBase 반환 (없으면 null)
@@ -1223,7 +1216,7 @@ const FIXED_CARD_TARGET = {
 };
 function getTempQuota(person){ return 0; } // 임시 할당 제거
 const KNOWN_PRODUCTS = ['Raw Data','DATA판매','기업모니터링','경영진단보고서','기업DB조회','DB조회','크레디뷰','사기거래탐지','패키지'];
-const STAGE_MAP_LABELS = ['0: 초기접촉','1: 발굴·소개','2: 미팅·제안','3: PoC·MOU','4: 협상·확정','5: 계약완료'];
+const STAGE_MAP_LABELS = ['1: 초기컨텍','2: 실무협의','3: 제안·MOU','4: 계약·운영'];
 const STAGE_COLORS = ['#475569','#d97706','#3b82f6','#8b5cf6','#14b8a6','#059669'];
 
 // Service Plan (억원, 인식기준 from Excel)
@@ -1266,13 +1259,13 @@ const KEYS = {companies:'tfr_cos',history:'tfr_hist',pricingOverride:'tfr_price'
 // ── 업체 금액 데이터 하드코딩 (2026.05.26 기준) ──
 // 키 구조: "업체명|타겟제품|비고"
 const COMPANY_FINANCIALS = {
-  "신한은행|DATA판매|(월별매입매출)": {계획금액:310000000,인식금액:103333333,금액구분:"confirmed",계약목표:"25년12월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
-  "신한은행|DATA판매|(월별재무제표)": {계획금액:270000000,인식금액:90000000,금액구분:"confirmed",계약목표:"25년12월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
-  "신한은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"25년9월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
+  "신한은행|DATA판매|(월별매입매출)": {계획금액:310000000,인식금액:103333333,금액구분:"confirmed",계약목표:"25년12월",RM:"김종환",SO:"박경민",진행단계:"계약·운영"},
+  "신한은행|DATA판매|(월별재무제표)": {계획금액:270000000,인식금액:90000000,금액구분:"confirmed",계약목표:"25년12월",RM:"김종환",SO:"박경민",진행단계:"계약·운영"},
+  "신한은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"25년9월",RM:"김종환",SO:"박경민",진행단계:"계약·운영"},
   "신한은행|DATA판매|": {계획금액:0,인식금액:0,금액구분:"confirmed",계약목표:"-",RM:"김종환",SO:"박경민",진행단계:"1단계"},
-  "신한은행|기업모니터링|": {계획금액:3000000,인식금액:250000,금액구분:"confirmed",계약목표:"5월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
-  "신한카드|DATA판매|(월별매입매출)": {계획금액:200000000,인식금액:66666666,금액구분:"confirmed",계약목표:"25년10월",RM:"김종환",SO:"박경민",진행단계:"8단계"},
-  "제주은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"2월중",RM:"김종환",SO:"육태우",진행단계:"8단계"},
+  "신한은행|기업모니터링|": {계획금액:3000000,인식금액:250000,금액구분:"confirmed",계약목표:"5월",RM:"김종환",SO:"박경민",진행단계:"계약·운영"},
+  "신한카드|DATA판매|(월별매입매출)": {계획금액:200000000,인식금액:66666666,금액구분:"confirmed",계약목표:"25년10월",RM:"김종환",SO:"박경민",진행단계:"계약·운영"},
+  "제주은행|DATA판매|(CPS)": {계획금액:30000000,인식금액:10000000,금액구분:"confirmed",계약목표:"2월중",RM:"김종환",SO:"육태우",진행단계:"계약·운영"},
   // ── 엑셀 정리(금액有) 기준 엔트리 (v48 동기화) ──
   "신한캐피탈|기업모니터링|": {계획금액:18000000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"김종환",SO:"육태우",진행단계:"",비고:"차주 테스트 아이디 제공예정"},
   "신한투자증권|기업모니터링|": {계획금액:37980000,인식금액:0,금액구분:"confirmed",계약목표:"7월",RM:"김종환",SO:"육태우",진행단계:"",비고:"검토상황 피드백 받을 예정"},
@@ -1563,10 +1556,10 @@ function renderHCAdminCards(){
 
 // ── 금융중개서비스 하드코딩 업체 (docx 외 별도 관리) ──
 const HARDCODED_COMPANIES = [
-  {업체명:'수출입은행', 타겟제품:'금융중개서비스', _subProd:'',          RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_수출입은행_금융중개'},
-  {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_중진공_팩토링'},
-  {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'네트워크론',  RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_중진공_네트워크론'},
-  {업체명:'신한은행',   타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:5, 진행단계:'8단계', id:'hc_신한은행_금융중개'},
+  {업체명:'수출입은행', 타겟제품:'금융중개서비스', _subProd:'',          RM:'이창희', SO:'박선정', _stageNum:4, 진행단계:'계약·운영', id:'hc_수출입은행_금융중개'},
+  {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:4, 진행단계:'계약·운영', id:'hc_중진공_팩토링'},
+  {업체명:'중진공',     타겟제품:'금융중개서비스', _subProd:'네트워크론',  RM:'이창희', SO:'박선정', _stageNum:4, 진행단계:'계약·운영', id:'hc_중진공_네트워크론'},
+  {업체명:'신한은행',   타겟제품:'금융중개서비스', _subProd:'팩토링',     RM:'이창희', SO:'박선정', _stageNum:4, 진행단계:'계약·운영', id:'hc_신한은행_금융중개'},
 ];
 // HARDCODED_FINANCIALS 제거 — HC 금액은 서비스 관리 어드민에서 설정
 const HARDCODED_FINANCIALS = {};
@@ -1610,7 +1603,13 @@ function applyRMSOMap(companies){
 
 
 function getEffectiveCompanies(){
-  return applyRMSOMap([...DB.companies, ...HARDCODED_COMPANIES.map(c=>({...c,_isHC:true}))]);
+  const HC_CE_IDS=['hc_ce_이창희','hc_ce_김종환','hc_ce_전힘찬'];
+  return applyRMSOMap([
+    ...DB.companies.map(c=>({...c, _stageNum: c._stageNum===5 ? 4 : normalizeStage(c.진행단계||'')})),
+    ...HARDCODED_COMPANIES
+      .filter(c=>!HC_CE_IDS.includes(c.id)) // 기업신용평가 목표배정용 제외
+      .map(c=>({...c, _isHC:true, _stageNum:4})) // HC는 항상 4단계 강제
+  ]);
 }
 
 
@@ -1642,6 +1641,9 @@ function loadDB(){
     const cfg=JSON.parse(localStorage.getItem(KEYS.settings)||'{}');
     DB.settings={...DB.settings,...cfg};
     DB.settings.isAdmin=false;
+    // ── 4단계 마이그레이션: 기존 _stageNum(구 5단계)을 진행단계 텍스트로 강제 재계산 ──
+    const _HC_IDS=['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개'];
+    DB.companies=DB.companies.map(c=>(_HC_IDS.includes(c.id)?{...c,_stageNum:4}:{...c,_stageNum:c._stageNum===5?4:normalizeStage(c.진행단계||'')}) );
   }catch(e){console.error('DB local load error',e)}
 }
 
@@ -1674,6 +1676,9 @@ async function loadDBFromFirebase(){
       return v;
     }
     DB.companies=_fbToArr(cos)||[];
+    // 4단계 마이그레이션: _stageNum 강제 재계산
+    const _HC_IDS=['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개'];
+    DB.companies=DB.companies.map(c=>(_HC_IDS.includes(c.id)?{...c,_stageNum:4}:{...c,_stageNum:c._stageNum===5?4:normalizeStage(c.진행단계||'')}) );
     DB.history=_fbToArr(hist)||[];
     DB.pricingOverride=po||{};
     DB.pricingExcel=_fbToArr(px)||[];
@@ -1702,6 +1707,8 @@ async function loadDBFromFirebase(){
       const d=snap.val();
       if(!d) return;
       DB.companies=_fbToArr(d.companies)||[];
+      const _HC_IDS=['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개'];
+    DB.companies=DB.companies.map(c=>(_HC_IDS.includes(c.id)?{...c,_stageNum:4}:{...c,_stageNum:c._stageNum===5?4:normalizeStage(c.진행단계||'')}) );
       DB.history=_fbToArr(d.history)||[];
       DB.pricingOverride=d.pricingOverride||{};
       DB.pricingExcel=_fbToArr(d.pricingExcel)||[];
@@ -2012,49 +2019,42 @@ function normalizeProduct(p){
 // STAGE NORMALIZATION
 // =====================================================
 // ─────────────────────────────────────────
-// 5단계 파이프라인 (8단계 원본 → 5단계 매핑)
-// 0,1단계 → 1.당사 상품소개
-// 2,3단계 → 2.유관부서별 심화
-// 4,5단계 → 3.NDA·커버리지
-// 6,7단계 → 4.조건협상
-// 8단계   → 5.계약완료
+// 4단계 파이프라인 (대표보고 기준으로 통일)
+// 1,2단계       → 1.초기컨텍
+// 3,4단계       → 2.실무협의
+// 5,6,7단계     → 3.제안·MOU
+// 8단계/계약완료 → 4.계약·운영
 // ─────────────────────────────────────────
 const STAGE5_LABELS = [
-  '',                  // 0(미사용)
-  '당사 상품소개',      // 1
-  '유관부서별 심화',    // 2
-  'NDA·커버리지',      // 3
-  '조건협상',          // 4
-  '계약완료',          // 5
+  '',            // 0(미사용)
+  '초기컨텍',    // 1
+  '실무협의',    // 2
+  '제안·MOU',   // 3
+  '계약·운영',   // 4
 ];
-const STAGE5_COLORS = ['','#3b82f6','#8b5cf6','#14b8a6','#f59e0b','#059669'];
-const STAGE5_LIGHT  = ['','rgba(59,130,246,.12)','rgba(139,92,246,.12)','rgba(20,184,166,.12)','rgba(245,158,11,.12)','rgba(5,150,105,.12)'];
+const STAGE5_COLORS = ['','#3b82f6','#8b5cf6','#f59e0b','#059669'];
+const STAGE5_LIGHT  = ['','rgba(59,130,246,.12)','rgba(139,92,246,.12)','rgba(245,158,11,.12)','rgba(5,150,105,.12)'];
 
 function normalizeStage(raw){
   if(!raw) return 1;
   const s = raw.toString().trim();
   const sL = s.toLowerCase();
-  // 8단계 = 계약완료 → 5
-  if(s==='8단계'||sL.includes('계약완료')||sL.includes('기존계약')||sL.includes('기존 계약')) return 5;
-  // 6,7단계 → 4 조건협상
-  if(s==='7단계'||s==='6단계') return 4;
-  // 5단계 → 4
-  if(s==='5단계') return 4;
-  // 4단계, 4-x → 3 NDA·커버리지
-  if(s==='4단계'||s.match(/^4[-–·]/)||sL.includes('mou')||sL.includes('커버리지')||sL.includes('nda')) return 3;
-  // 3단계, 3-x (사후관리/PoC) → 2 유관부서별 심화
-  if(s==='3단계'||s.match(/^3[-–·]/)||sL.includes('poc')||sL.includes('사후관리')) return 2;
-  // 2단계 → 2
-  if(s==='2단계') return 2;
-  // 1단계, 0단계 → 1 당사 상품소개
-  if(s==='1단계'||s==='0단계'||s==='0') return 1;
+  const sNoSp = sL.replace(/\s+/g,''); // 공백 제거 버전
+  // 8단계 = 계약·운영 → 4
+  if(s==='8단계'||sL.includes('계약완료')||sNoSp.includes('기존계약')||sNoSp.includes('기계약')||sL.includes('계약·운영')||sL.includes('계약운영')||sNoSp.includes('운영중')) return 4;
+  // 5,6,7단계 → 3 제안·MOU
+  if(s==='7단계'||s==='6단계'||s==='5단계') return 3;
+  if(sL.includes('mou')||sL.includes('제안')||sL.includes('nda')||sL.includes('커버리지')||sL.includes('poc')||sL.includes('사후관리')) return 3;
+  // 3,4단계 → 2 실무협의
+  if(s==='4단계'||s==='3단계'||s.match(/^[34][-–·]/)||sL.includes('실무')) return 2;
+  // 1,2단계 → 1 초기컨텍
+  if(s==='2단계'||s==='1단계'||s==='0단계'||s==='0') return 1;
   // 숫자 단독
   const num = parseInt(s);
   if(!isNaN(num)){
-    if(num>=8) return 5;
-    if(num>=6) return 4;
-    if(num>=4) return 3;
-    if(num>=2) return 2;
+    if(num>=8) return 4;
+    if(num>=5) return 3;
+    if(num>=3) return 2;
     return 1;
   }
   if(s==='-'||s==='') return 1;
@@ -2354,7 +2354,7 @@ function parseDocxHtml(html){
 
     const stageNum = normalizeStage(stage);
     // 계약완료(8단계)면 진행현황에서 계약금액 추출
-    const extractedAmt = stageNum===5 ? extractAmountFromStatus(status) : 0;
+    const extractedAmt = stageNum===4 ? extractAmountFromStatus(status) : 0;
 
     entries.push({
       id:genId(),
@@ -2937,14 +2937,14 @@ function renderAll(){
 function renderKPIs(){
   const cos=DB.companies;
   const allCos=getEffectiveCompanies(); // 금융중개서비스 포함
-  const pipeline=cos.filter(c=>c._stageNum>0&&c._stageNum<5).length;
-  const pipelineCoCount=new Set(cos.filter(c=>c._stageNum>0&&c._stageNum<5).map(c=>c.업체명)).size;
-  const confirmed=allCos.filter(c=>c._stageNum===5).length;
+  const pipeline=cos.filter(c=>c._stageNum>0&&c._stageNum<4).length;
+  const pipelineCoCount=new Set(cos.filter(c=>c._stageNum>0&&c._stageNum<4).map(c=>c.업체명)).size;
+  const confirmed=allCos.filter(c=>c._stageNum===4).length;
   // 확정 계약 업체 수: 업체명의 괄호 구분자 제거 후 중복 제거
   // 예: 중진공(팩토링), 중진공(네트워크론) → 중진공 1개로 카운트
-  const confirmedCoCount=new Set(allCos.filter(c=>c._stageNum===5).map(c=>(c.업체명||'').replace(/\s*\([^)]*\)\s*$/,'').trim())).size;
+  const confirmedCoCount=new Set(allCos.filter(c=>c._stageNum===4).map(c=>(c.업체명||'').replace(/\s*\([^)]*\)\s*$/,'').trim())).size;
   let actualRev=0,confirmedAmt=0;
-  for(const co of allCos.filter(c=>c._stageNum===5)){const p=getPricing(co);actualRev+=p.amount||0;confirmedAmt+=p.amount||0;}
+  for(const co of allCos.filter(c=>c._stageNum===4)){const p=getPricing(co);actualRev+=p.amount||0;confirmedAmt+=p.amount||0;}
   actualRev+=CREDIVIEW_MASS_AMT; // 크레디뷰 Mass 실적 추가
   const achRate=actualRev/(TOTAL_PLAN*1e8)||0;
   const weeklyAct=DB.history.length>0?cos.length-(DB.history[DB.history.length-1]?.snapshot?.length||0):0;
@@ -2996,7 +2996,7 @@ function renderKPIs(){
   if(hasPrevKpi){
     // 신규업체: 이전 스냅샷에 없는 업체명
     const kpiPrevNames=new Set(kpiPrevSnap.map(c=>c.업체명||''));
-    newCoCount=cos.filter(c=>c._stageNum>0&&c._stageNum<5&&!kpiPrevNames.has(c.업체명||'')).length;
+    newCoCount=cos.filter(c=>c._stageNum>0&&c._stageNum<4&&!kpiPrevNames.has(c.업체명||'')).length;
     // 파이프라인 변경: 이전 스냅샷 대비 단계 바뀐 건
     const kpiPrevStageMap={};
     for(const c of kpiPrevSnap){
@@ -3377,7 +3377,7 @@ function openWeeklyActivityDetail(){
   const revSnap={};
   const _allCosForRev=getEffectiveCompanies();
   for(const prod of REV_PRODS) revSnap[prod]=0;
-  for(const co of _allCosForRev.filter(c=>c._stageNum===5&&!isED(c)&&!c._isHC)){
+  for(const co of _allCosForRev.filter(c=>c._stageNum===4&&!isED(c)&&!c._isHC)){
     const k=normalizeProduct(co.타겟제품||'')||'기타';
     const mapped=REV_PRODS.includes(k)?k:null;
     if(!mapped) continue;
@@ -3566,9 +3566,9 @@ function openWeeklyHistDetail(wKeyEncoded, dataKey){
 
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   function stageBadgeS(n,raw){
-    const labels={1:'1단계',2:'2단계',3:'3단계',4:'4단계',5:'계약완료'};
-    const colors={1:'rgba(100,116,139,.3)',2:'rgba(59,130,246,.25)',3:'rgba(59,130,246,.4)',4:'rgba(245,158,11,.3)',5:'rgba(52,211,153,.3)'};
-    const tcols={1:'#94a3b8',2:'#93c5fd',3:'#60a5fa',4:'#fbbf24',5:'#34d399'};
+    const labels={1:'초기컨텍',2:'실무협의',3:'제안·MOU',4:'계약·운영'};
+    const colors={1:'rgba(100,116,139,.3)',2:'rgba(59,130,246,.25)',3:'rgba(245,158,11,.3)',4:'rgba(52,211,153,.3)'};
+    const tcols={1:'#94a3b8',2:'#93c5fd',3:'#fbbf24',4:'#34d399'};
     return `<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:${colors[n]||colors[1]};color:${tcols[n]||tcols[1]}">${labels[n]||raw||'—'}</span>`;
   }
 
@@ -3747,7 +3747,7 @@ function openKpiDetail(type){
     const PROD_COLORS={'DATA판매':'#3b82f6','기업모니터링':'#a78bfa','기업DB조회':'#2dd4bf','크레디뷰':'#10b981','금융중개서비스':'#f59e0b'};
     const curRevSnap={};
     for(const prod of REV_PRODS) curRevSnap[prod]=0;
-    for(const co of cos.filter(c=>c._stageNum===5&&!isED(c)&&!c._isHC)){
+    for(const co of cos.filter(c=>c._stageNum===4&&!isED(c)&&!c._isHC)){
       const k=normalizeProduct(co.타겟제품||'')||'기타';
       if(!REV_PRODS.includes(k)) continue;
       const p=getPricing(co);
@@ -3841,7 +3841,7 @@ function openKpiDetail(type){
     revChartHtml=buildRevChart();
     // 타겟제품별 그룹화
     const prodGroups={};
-    for(const co of cos.filter(c=>c._stageNum===5&&!isED(c))){
+    for(const co of cos.filter(c=>c._stageNum===4&&!isED(c))){
       const rawProd=co.타겟제품||'';
       const isPkg=rawProd.toLowerCase().includes('패키지');
       // 패키지는 기업DB조회 그룹에 포함 (실적 집계 기준)
@@ -3956,7 +3956,7 @@ function openKpiDetail(type){
     }).join('');
   }else if(type==='confirmed'){
     title='확정 계약 목록';
-    const items=cos.filter(c=>c._stageNum===5);
+    const items=cos.filter(c=>c._stageNum===4);
     const items2025=items.filter(c=>getContractYear(c)===2025);
     const items2026=items.filter(c=>getContractYear(c)===2026);
     function sumAmt(arr){let s=0;for(const c of arr){const p=getPricing(c);s+=p.amount||0;}return s;}
@@ -4019,7 +4019,7 @@ function renderServiceProgress(){
 
   // 계약완료(5단계) 인식매출 집계
   const pm={};
-  for(const co of cos.filter(c=>c._stageNum===5)){
+  for(const co of cos.filter(c=>c._stageNum===4)){
     const p=getPricing(co);
     const k=normalizeProduct(co.타겟제품||'')||(co.타겟제품||'');
     pm[k]=(pm[k]||0)+(p.amount||0);
@@ -4028,7 +4028,7 @@ function renderServiceProgress(){
 
   // DB+모니터링 패키지/단독 분류
   const pkgData={패키지:{cnt:0,amt:0},DB:{cnt:0,amt:0},모니터링:{cnt:0,amt:0}};
-  for(const co of cos.filter(c=>c._stageNum===5)){
+  for(const co of cos.filter(c=>c._stageNum===4)){
     const p=getPricing(co); const raw=(co.타겟제품||'').trim(); const amt=p.amount||0; if(!amt)continue;
     const isDB=raw.includes('기업DB조회')||raw.includes('DB조회');
     const isMon=raw.includes('기업모니터링')||raw.includes('모니터링');
@@ -4045,7 +4045,7 @@ function renderServiceProgress(){
     for(const co of cos){
       const k=normalizeProduct(co.타겟제품||'')||(co.타겟제품||'');
       const hit=keys.some(kk=>(k===kk)||(k.includes(kk))||(kk.includes(k)));
-      if(hit){ cnt++; if(co._stageNum===5) insik+=(getPricing(co).amount||0); }
+      if(hit){ cnt++; if(co._stageNum===4) insik+=(getPricing(co).amount||0); }
     }
     return {cnt,insik};
   }
@@ -4086,7 +4086,7 @@ function renderServiceProgress(){
 }
 
 function openPkgDetail(){
-  const cos=getEffectiveCompanies().filter(c=>c._stageNum===5);
+  const cos=getEffectiveCompanies().filter(c=>c._stageNum===4);
   const byType={패키지:[],DB:[],모니터링:[]};
   for(const co of cos){
     const raw=(co.타겟제품||'').trim();
@@ -4168,7 +4168,7 @@ function openPkgDetail(){
 
 function openSvcDetail(svcKey){
   const allCos=getEffectiveCompanies().filter(co=>normalizeProduct(co.타겟제품||'')===svcKey);
-  const confirmedCos=allCos.filter(c=>c._stageNum===5&&getPricing(c).amount>0);
+  const confirmedCos=allCos.filter(c=>c._stageNum===4&&getPricing(c).amount>0);
   const plan=SERVICE_PLANS[svcKey]||0;
   let actual=0; for(const co of confirmedCos) actual+=(getPricing(co).amount||0)/1e8;
   // 크레디뷰: Mass 실적 추가
@@ -4240,14 +4240,14 @@ function openSvcDetail(svcKey){
 }
 
 function renderPipelineChart(){
-  const cos=DB.companies;
+  const cos=getEffectiveCompanies(); // HC(금융중개) 포함
   const el=document.getElementById('pipelineChart');
-  const stageCounts=[0,0,0,0,0,0];
-  for(const co of cos) stageCounts[co._stageNum||1]++;
+  const stageCounts=[0,0,0,0,0];
+  for(const co of cos) stageCounts[Math.min(co._stageNum||1,4)]++;
   const maxCnt=Math.max(...stageCounts,1);
   
   // 5→1 역순 표시
-  const stages=[5,4,3,2,1];
+  const stages=[4,3,2,1];
   
   // 파이프라인 전체 높이를 flex로 균등 분배
   el.style.cssText='display:flex;flex-direction:column;gap:0;height:100%';
@@ -4269,7 +4269,7 @@ function renderPipelineChart(){
 
 // ─── 파이프라인 단계 업체 상세 팝업 ───
 function showPipelineDetail(stageNum){
-  const cos=DB.companies.filter(co=>(co._stageNum||1)===stageNum);
+  const cos=getEffectiveCompanies().filter(co=>(co._stageNum||1)===stageNum); // HC 포함
   if(!cos.length){ showToast('해당 단계 업체 없음','warn'); return; }
   const col=STAGE5_COLORS[stageNum];
   const lbl=STAGE5_LABELS[stageNum];
@@ -4379,7 +4379,7 @@ function openInternalProdDetail(prod){
     const p = getPricing(co);
     const subProd = co._subProd||'';
     const isExcludeHC = co._isHC && (subProd.includes('팩토링')||subProd.includes('네트워크'));
-    const isDone = co._stageNum===5 && !isExcludeHC;
+    const isDone = co._stageNum===4 && !isExcludeHC;
     const contractAmt = isDone ? (p.amount||0) : 0;
     const expectedAmt = isDone ? 0 : parseAmtText(co.기대실적||'');
     return {co, isDone, contractAmt, expectedAmt, amt: isDone?contractAmt:expectedAmt};
@@ -4476,7 +4476,7 @@ function renderInternalTab(){
     if(!co._isHC){
       allProds[k].byStage[co._stageNum||0] = (allProds[k].byStage[co._stageNum||0]||0)+1;
     }
-    const isDone = co._stageNum===5 && !co._isHC;
+    const isDone = co._stageNum===4 && !co._isHC;
     const amt = isDone ? (getPricing(co).amount||0) : parseAmtText(co.기대실적||'');
     allProds[k].contract += amt;
     prodItems[k].push(co);
@@ -4535,7 +4535,7 @@ function renderInternalTab(){
     {num:2, label:'2단계', color:'var(--t2)'},
     {num:3, label:'3단계', color:'var(--a2)'},
     {num:4, label:'4단계', color:'var(--warning)'},
-    {num:5, label:'5단계(계약완료)', color:'var(--success)'},
+    {num:4, label:'4단계(계약·운영)', color:'var(--success)'},
   ];
 
   // 네트워크/팩토링 포함 타겟제품은 8단계(stageNum=5) 카운트 제외
@@ -4596,7 +4596,7 @@ function renderCommonRev(){
   const allCos=getEffectiveCompanies();
   const edPlan=(SERVICE_PLANS['경영진단보고서']||2.15)*1e8;
   let edActual=0;
-  for(const co of allCos.filter(c=>c._stageNum===5&&isED(c))) edActual+=(getPricing(co).amount||0);
+  for(const co of allCos.filter(c=>c._stageNum===4&&isED(c))) edActual+=(getPricing(co).amount||0);
   const hcData=getHCAdminData();
   const hcRows=hcData['금융중개서비스']||[];
   const totalPlan=hcPlan+crediPlan+edPlan;
@@ -4618,7 +4618,7 @@ function renderCommonRev(){
   function hcSubRows(col){
     return _hcRows.map(r=>subItem(r.업체명||'',r.인식금액||0,col)).join('');
   }
-  const edCos=allCos.filter(c=>c._stageNum===5&&isED(c));
+  const edCos=allCos.filter(c=>c._stageNum===4&&isED(c));
   function edSubRows(col){
     return edCos.length
       ?edCos.map(co=>subItem(co.업체명||'',getPricing(co).amount||0,col)).join('')
@@ -4681,7 +4681,7 @@ function renderRMSummary(){
   let totalActual=0;
   const rmRevs={};
   for(const rm of KNOWN_RMS){
-    const my=allCos.filter(c=>(c.RM===rm||c.SO===rm)&&c._stageNum===5&&!isED(c)&&!_hcEx.has(c.id||''));
+    const my=allCos.filter(c=>(c.RM===rm||c.SO===rm)&&c._stageNum===4&&!isED(c)&&!_hcEx.has(c.id||''));
     let rev=0; for(const co of my) rev+=(getPricing(co).amount||0);
     rmRevs[rm]=rev; totalActual+=rev;
   }
@@ -4719,10 +4719,10 @@ function renderRMCards(){
   function makeCard(p,role,i){
     const my=cos.filter(c=>c.RM===p||c.SO===p);
     const myCoNames=new Set(my.map(c=>c.업체명));
-    const confCoCount=new Set(my.filter(c=>c._stageNum===5).map(c=>c.업체명)).size;
-    const act=my.filter(c=>c._stageNum>0&&c._stageNum<5).length;
+    const confCoCount=new Set(my.filter(c=>c._stageNum===4).map(c=>c.업체명)).size;
+    const act=my.filter(c=>c._stageNum>0&&c._stageNum<4).length;
     const _hcEx=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
-    let rev=0; for(const co of my.filter(c=>c._stageNum===5&&!isED(c)&&!_hcEx.has(c.id||''))) rev+=getPricing(co).amount||0;
+    let rev=0; for(const co of my.filter(c=>c._stageNum===4&&!isED(c)&&!_hcEx.has(c.id||''))) rev+=getPricing(co).amount||0;
     const pn=new Set(prev.filter(c=>c.RM===p||c.SO===p).map(c=>c.업체명));
     const newC=[...myCoNames].filter(n=>!pn.has(n)).length;
     // Set 기반 금주/지난주 활동 계산 — 마이너스 방지
@@ -4826,7 +4826,7 @@ function renderRMCards(){
             if(isED(co)) continue;
             const cf2=getCF(co)||getHCF(co);
             if(!cf2) continue;
-            if(co._stageNum===5){
+            if(co._stageNum===4){
               // C안: 계약완료 → 연간 계약금액 전체를 목표로
               targetRev+=cf2.계획금액||0;
             } else {
@@ -4865,11 +4865,11 @@ function openPipelinePersonDetail(person){
   if(!cos.length){showToast('담당 업체 없음','warn');return;}
 
   const role=KNOWN_RMS.includes(person)?'Relationship Manager':'Sales Owner';
-  const totalPipe=cos.filter(c=>c._stageNum>0&&c._stageNum<5).length;
+  const totalPipe=cos.filter(c=>c._stageNum>0&&c._stageNum<4).length;
 
   let html='';
   // ── 상단 요약 카드 ──
-  const pipeItems=cos.filter(c=>c._stageNum>0&&c._stageNum<5);
+  const pipeItems=cos.filter(c=>c._stageNum>0&&c._stageNum<4);
   const stageSummary=[1,2,3,4].map(n=>{
     const cnt=cos.filter(c=>(c._stageNum||1)===n).length;
     const col=STAGE5_COLORS[n]; const bg=STAGE5_LIGHT[n];
@@ -4889,7 +4889,7 @@ function openPipelinePersonDetail(person){
     `<div style="font-size:11px;color:var(--t2)">${role} · 클릭하면 단계별 세부 조회</div>` +
   `</div>`;
 
-  [1,2,3,4,5].forEach(n=>{
+  [1,2,3,4].forEach(n=>{
     const items=cos.filter(c=>(c._stageNum||1)===n);
     if(!items.length) return;
     const col=STAGE5_COLORS[n], bg=STAGE5_LIGHT[n];
@@ -5181,8 +5181,8 @@ function renderPersonDetailModal(person,months){
   const prev=(DB.history.length>0)?DB.history[DB.history.length-1].snapshot:[];
   const cosCoNames=new Set(cos.map(c=>c.업체명));
   const cosCoCount=cosCoNames.size;
-  const conf=cos.filter(c=>c._stageNum===5&&!isED(c));
-  const act=cos.filter(c=>c._stageNum>0&&c._stageNum<5);
+  const conf=cos.filter(c=>c._stageNum===4&&!isED(c));
+  const act=cos.filter(c=>c._stageNum>0&&c._stageNum<4);
   let rev=0; for(const co of conf) rev+=getPricing(co).amount||0;
   const prevNames=new Set(prev.filter(c=>c.RM===person||c.SO===person).map(c=>c.업체명));
   const newCos=cos.filter(c=>!prevNames.has(c.업체명));
@@ -5325,7 +5325,7 @@ function renderPersonDetailModal(person,months){
         const _cfTime=cf?cf.계약목표||'':'';
         const amt=co._ceQuota!=null?co._ceQuota:(cf?(
           isTarget
-            ? (co._stageNum===5
+            ? (co._stageNum===4
                 ? _cfPlan                         // 목표매출: 계약완료 → 연간 계획금액
                 : calcInsikTarget(_cfPlan,_cfTime) // 목표매출: 잔여기간 기준
               )
@@ -5333,7 +5333,7 @@ function renderPersonDetailModal(person,months){
         ):0);
         const hasAmt=co._ceQuota!=null||(_cfPlan>0);
         const ktarget=cf?cf.계약목표||'—':'—';
-        const amtLabel=co._stageNum===5?'목표':isTarget?'목표':'인식';
+        const amtLabel=co._stageNum===4?'목표':isTarget?'목표':'인식';
         const amtDisplay=hasAmt?`(${amtLabel}) ${fmtAmt(amt)}`:'<span style="color:var(--t2)">미설정</span>';
         return `<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:6px 10px;font-weight:600;color:var(--t0)">${esc(co.업체명||'')}</td>
@@ -5356,7 +5356,7 @@ function renderPersonDetailModal(person,months){
     if(_hcExcludeRev.has(co.id||'')) continue; // 금융중개 HC → 공통매출에서 표시
     const cfT=getCF(co)||getHCF(co);
     if(!cfT) continue;
-    if(co._stageNum===5){
+    if(co._stageNum===4){
       popupTargetRev+=cfT.계획금액||0;
     } else {
       popupTargetRev+=calcInsikTarget(cfT.계획금액||0, cfT.계약목표||'');
@@ -5364,7 +5364,7 @@ function renderPersonDetailModal(person,months){
   }
   const popupPct=popupTargetRev>0?Math.round(rev/popupTargetRev*100):0;
   const popupBarColor=popupPct>=80?'var(--success)':popupPct>=50?'#f59e0b':'var(--danger)';
-  const sb=[1,2,3,4,5].map(n=>{const it=cos.filter(c=>(c._stageNum||1)===n);return it.length?`<span style="background:${STAGE5_LIGHT[n]};color:${STAGE5_COLORS[n]};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-right:4px">${n}.${STAGE5_LABELS[n]} ${it.length}건</span>`:''}).join('');
+  const sb=[1,2,3,4].map(n=>{const it=cos.filter(c=>(c._stageNum||1)===n);return it.length?`<span style="background:${STAGE5_LIGHT[n]};color:${STAGE5_COLORS[n]};padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-right:4px">${n}.${STAGE5_LABELS[n]} ${it.length}건</span>`:''}).join('');
   const kpiRow=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">${
     [['담당업체',cosCoCount,'var(--t0)'],['목표매출',((FIXED_CARD_TARGET[person]||0)/1e8).toFixed(2)+'억','var(--t1)'],['달성매출',(rev/1e8).toFixed(2)+'억','var(--purple)']].map(([l,v,col])=>
       `<div style="background:var(--bg2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:800;font-family:Outfit,sans-serif;color:${col}">${v}</div><div style="font-size:10px;color:var(--t2);margin-top:3px">${l}</div></div>`
@@ -5419,7 +5419,7 @@ function renderPersonDetailModal(person,months){
   // ── 달성매출 업체 테이블 (8단계 업체만) ──
   // 달성매출: 경영진단보고서 + 금융중개서비스 HC 제외 (공통매출 현황에서 표시)
   const _hcExclude=new Set(['hc_수출입은행_금융중개','hc_중진공_팩토링','hc_중진공_네트워크론','hc_신한은행_금융중개']);
-  const achieveItems=cos.filter(c=>c._stageNum===5&&!isED(c)&&!_hcExclude.has(c.id||''));
+  const achieveItems=cos.filter(c=>c._stageNum===4&&!isED(c)&&!_hcExclude.has(c.id||''));
   const achieveTable=`
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -5510,10 +5510,10 @@ function renderCharts(){
   if(!ctx1||!ctx1.offsetParent) return;
   if(charts.rmStage) charts.rmStage.destroy();
   const allCoEff=getEffectiveCompanies();
-  const spd=ALL.map(p=>{const my=allCoEff.filter(c=>c.RM===p||c.SO===p);return[1,2,3,4,5].map(s=>my.filter(c=>(c._stageNum||1)===s).length);});
+  const spd=ALL.map(p=>{const my=allCoEff.filter(c=>c.RM===p||c.SO===p);return[1,2,3,4].map(s=>my.filter(c=>(c._stageNum||1)===s).length);});
   charts.rmStage=new Chart(ctx1,{
     type:'bar',
-    data:{labels:ALL.map(p=>{ const pipeCount=allCoEff.filter(c=>(c.RM===p||c.SO===p)&&c._stageNum>0&&c._stageNum<5).length; return p+(pipeCount>0?` (${pipeCount}개 업체)`:''); }),datasets:[1,2,3,4,5].map(s=>({label:STAGE5_LABELS[s],data:ALL.map((_,i)=>spd[i][s-1]),backgroundColor:STAGE5_COLORS[s]+'99',borderColor:STAGE5_COLORS[s],borderWidth:1,borderRadius:3}))},
+    data:{labels:ALL.map(p=>{ const pipeCount=allCoEff.filter(c=>(c.RM===p||c.SO===p)&&c._stageNum>0&&c._stageNum<4).length; return p+(pipeCount>0?` (${pipeCount}개 업체)`:''); }),datasets:[1,2,3,4].map(s=>({label:STAGE5_LABELS[s],data:ALL.map((_,i)=>spd[i][s-1]),backgroundColor:STAGE5_COLORS[s]+'99',borderColor:STAGE5_COLORS[s],borderWidth:1,borderRadius:3}))},
     options:{responsive:true,maintainAspectRatio:false,
       onClick:(_,els)=>{if(els.length) openPipelinePersonDetail(ALL[els[0].index]);},
       plugins:{legend:{labels:{color:tc,font:{size:10},boxWidth:12}},tooltip:{callbacks:{title:it=>`${it[0].label} — 클릭하면 파이프라인 조회`}}},
@@ -6019,7 +6019,7 @@ function doRollback(){
     file:autoLabel
   });
   // 롤백 대상 스냅으로 복원
-  DB.companies=h.snapshot.map(co=>({...co,_stageNum:co._stageNum!=null?co._stageNum:normalizeStage(co.진행단계||'')}));
+  DB.companies=h.snapshot.map(co=>({...co,_stageNum:co._stageNum===5?4:normalizeStage(co.진행단계||'')}));
   DB.pricingExcel=h.pricingExcel?h.pricingExcel.map(r=>({...r})):[];
   DB.pricingOverride=h.pricingOverride?{...h.pricingOverride}:{};
   DB.settings.lastUpload=h.date;
@@ -6269,7 +6269,7 @@ async function loadChangeLogFromDB(){
 const GH_COMMIT_KEY='ghCommitLog_v1';
 async function syncGitHubCommits(){
   // ── 하드코딩된 GitHub 커밋 이력 (push 시 자동 갱신) ──
-  const GH_COMMITS=[{"sha": "b1eddc8", "ts": "2026-07-21 09:45:25", "type": "배포", "field": "fix: 업로드 안정화 - rowStatus 무관 diff체크, toSave에 applyRMSOMap 적용, commitSave/리스너 후 패치", "before": "", "after": "b1eddc8", "author": "techfinra"}, {"sha": "9967a73", "ts": "2026-07-21 09:42:06", "type": "배포", "field": "fix: 업로드 후 Firebase 리스너가 이전 데이터로 덮어쓰는 버그 수정 - 저장 완료 후 3초간 리스너 무시", "before": "", "after": "9967a73", "author": "techfinra"}, {"sha": "ce58d5e", "ts": "2026-07-21 08:49:39", "type": "배포", "field": "fix: BNK캐피탈 7/16 방문미팅 DB.companies 직접 패치 (한영관 추가) + init 시 자동 적용", "before": "", "after": "ce58d5e", "author": "techfinra"}, {"sha": "0329e4b", "ts": "2026-07-21 08:48:15", "type": "배포", "field": "fix: BNK캐피탈 방문미팅 7/21 한영관 하드코딩 추가 (applyRMSOMap VISIT_PATCH)", "before": "", "after": "0329e4b", "author": "techfinra"}, {"sha": "be866ad", "ts": "2026-07-20 09:52:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (중진공팩토링 0.50억, 중진공네트워크론 2.90억)", "before": "", "after": "be866ad", "author": "techfinra"}, {"sha": "3dc3f72", "ts": "2026-07-20 09:38:17", "type": "배포", "field": "feat: RM/SO 분장표(87개 업체) + applyRMSOMap + 한영관 오버레이 제거 + 크레디뷰 253,565,000원", "before": "", "after": "3dc3f72", "author": "techfinra"}, {"sha": "3fe322a", "ts": "2026-07-13 13:31:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (수출입 0.44억, 중진공팩토링 0.47억, 중진공네트워크론 2.79억, 신한 0.01억)", "before": "", "after": "3fe322a", "author": "techfinra"}, {"sha": "bf0e0c8", "ts": "2026-07-13 13:27:16", "type": "배포", "field": "feat: Weekly Trend 그래프에서 신규업체 선 제거 (방문미팅+Sales활동 2선만)", "before": "", "after": "bf0e0c8", "author": "techfinra"}, {"sha": "53b1542", "ts": "2026-07-13 13:25:49", "type": "배포", "field": "hotfix: thisEntry hist.push 누락 복원 - 이번주 그래프 미표시 버그 수정", "before": "", "after": "53b1542", "author": "techfinra"}, {"sha": "0893124", "ts": "2026-07-13 13:24:33", "type": "배포", "field": "fix: 저번주 lastEntry 신규업체 수치 savedHist에서 보존 (newCo:0 덮어쓰기 방지)", "before": "", "after": "0893124", "author": "techfinra"}, {"sha": "33dc29b", "ts": "2026-07-13 13:23:38", "type": "배포", "field": "fix: 저번주 그래프 수치 실시간 계산으로 수정 (localStorage 구버전 데이터 무시)", "before": "", "after": "33dc29b", "author": "techfinra"}, {"sha": "6f07f43", "ts": "2026-07-13 13:01:16", "type": "배포", "field": "fix: 이번주 그래프 수치 실시간 반영 (seed에서 현재주차 제거) + 크레디뷰 243,525,000원 + JSON 개행 이스케이프 수정", "before": "", "after": "6f07f43", "author": "techfinra"}, {"sha": "f065812", "ts": "2026-07-07 07:59:58", "type": "배포", "field": "hotfix: revChartHtml const 중복 선언 → 대입으로 수정", "before": "", "after": "f065812", "author": "techfinra"}, {"sha": "d038aaa", "ts": "2026-07-07 07:58:19", "type": "배포", "field": "fix: Revenue Trend 그래프 - localStorage 없어도 현재 매출 직접 계산해서 즉시 표시", "before": "", "after": "d038aaa", "author": "techfinra"}, {"sha": "9a1b0b7", "ts": "2026-07-07 07:56:31", "type": "배포", "field": "hotfix: openKpiDetail revChartHtml 초기화 + innerHTML 연산자 우선순위 버그 수정", "before": "", "after": "9a1b0b7", "author": "techfinra"}, {"sha": "ab823be", "ts": "2026-07-07 07:54:40", "type": "배포", "field": "feat: Sales 실적 매출 팝업 상단 서비스별 5선 Revenue Trend 그래프 추가", "before": "", "after": "ab823be", "author": "techfinra"}, {"sha": "9e64da6", "ts": "2026-07-07 07:48:19", "type": "배포", "field": "feat: 한영관 카드 불투명 오버레이 + 업데이트 예정 배지 추가", "before": "", "after": "9e64da6", "author": "techfinra"}, {"sha": "63010f7", "ts": "2026-07-07 07:43:41", "type": "배포", "field": "feat: RM 한영관 추가 (목표 0원, 개인별 Sales 활동 현황 포함)", "before": "", "after": "63010f7", "author": "techfinra"}, {"sha": "c455510", "ts": "2026-07-07 07:41:07", "type": "배포", "field": "fix: 팝업 타이틀 '지난주 대비' 제거 + 'B 이번주 신규' 텍스트 수정", "before": "", "after": "c455510", "author": "techfinra"}, {"sha": "7cb2803", "ts": "2026-07-07 07:39:18", "type": "배포", "field": "fix: C·신규업체 배지 색상 초록→보라색", "before": "", "after": "7cb2803", "author": "techfinra"}, {"sha": "88e34fc", "ts": "2026-07-07 07:37:15", "type": "배포", "field": "fix: Weekly Trend 그래프 summaryCards 바로 위로 + 여백 조정", "before": "", "after": "88e34fc", "author": "techfinra"}, {"sha": "75a6f97", "ts": "2026-07-06 18:04:49", "type": "배포", "field": "fix: 이번주활동 팝업 Weekly Trend 그래프 다시 맨 아래로 복원", "before": "", "after": "75a6f97", "author": "techfinra"}, {"sha": "e67df92", "ts": "2026-07-06 18:02:37", "type": "배포", "field": "feat: 이번주활동 팝업 그래프 상단 배치 + Weekly Trend 타이틀 디자인 개선", "before": "", "after": "e67df92", "author": "techfinra"}, {"sha": "209ac2f", "ts": "2026-07-06 14:10:29", "type": "배포", "field": "feat: 개인별 활동 팝업에 담당자별 5주 방문미팅/Sales활동 추세 그래프 추가", "before": "", "after": "209ac2f", "author": "techfinra"}, {"sha": "2d91f73", "ts": "2026-07-06 13:59:28", "type": "배포", "field": "fix: 마지막주 X축 레이블 점 바로 아래 그래프 내부 중앙 배치", "before": "", "after": "2d91f73", "author": "techfinra"}, {"sha": "d04c33b", "ts": "2026-07-06 13:56:49", "type": "배포", "field": "feat: 그래프 마지막점 숫자 오른쪽 배치 + X축 이번주 레이블 한줄 오른쪽", "before": "", "after": "d04c33b", "author": "techfinra"}, {"sha": "876e8e2", "ts": "2026-07-06 13:52:45", "type": "배포", "field": "fix: 그래프 모든 점 클릭 가능(pointer-events:all) + 이번주 레이블 두줄 + 여백 조정", "before": "", "after": "876e8e2", "author": "techfinra"}, {"sha": "b992b91", "ts": "2026-07-06 13:47:37", "type": "배포", "field": "fix: 그래프 직선+라이트모드배경+모든점 클릭가능 + 서머리카드 클릭/▶클릭 제거", "before": "", "after": "b992b91", "author": "techfinra"}, {"sha": "208ea4e", "ts": "2026-07-06 13:44:19", "type": "배포", "field": "feat: 그래프 고급화(글로우/스플라인/데이터레이블) + 서머리카드 클릭기능/▶클릭 제거", "before": "", "after": "208ea4e", "author": "techfinra"}, {"sha": "def27d6", "ts": "2026-07-06 13:41:25", "type": "배포", "field": "fix: WH_SEED 화~월 기준 전면 재계산 (06/23주 방문미팅 8건 등) + 크레디뷰 항목 통합 (경영진단보고서→크레디뷰)", "before": "", "after": "def27d6", "author": "techfinra"}, {"sha": "a379321", "ts": "2026-07-06 13:31:53", "type": "배포", "field": "feat: 과거 주차 visitList/actList 상세 데이터 전체 반영 + 단일점 클릭 가능", "before": "", "after": "a379321", "author": "techfinra"}, {"sha": "696a68b", "ts": "2026-07-06 13:27:10", "type": "배포", "field": "fix: 06/23~06/29 방문미팅 1→8건 수정 (전사 기준, 신한캐피탈+신한투자증권+우리은행+NH농협은행+키움인베스트먼트+메인비즈협회+전", "before": "", "after": "696a68b", "author": "techfinra"}, {"sha": "f185376", "ts": "2026-07-06 13:25:56", "type": "배포", "field": "fix: WH_SEED label 전면 교정 - wKey 기준 정확한 주차 범위로 수정", "before": "", "after": "f185376", "author": "techfinra"}, {"sha": "9a2ad23", "ts": "2026-07-06 13:23:22", "type": "배포", "field": "fix: seed 수치 docx 재파싱 기준으로 전면 교정 (06/23주 visit:1,act:13 확인)", "before": "", "after": "9a2ad23", "author": "techfinra"}, {"sha": "4975cf9", "ts": "2026-07-06 13:20:49", "type": "배포", "field": "fix: 그래프 날짜짤림/밝기개선 + seed 강제갱신 + 점 클릭시 해당항목만 팝업", "before": "", "after": "4975cf9", "author": "techfinra"}, {"sha": "d8ca9e3", "ts": "2026-07-06 13:16:16", "type": "배포", "field": "hotfix: _wKey 선언 순서 오류 수정 - summaryCards 앞으로 이동 (팝업 안 뜨는 버그)", "before": "", "after": "d8ca9e3", "author": "techfinra"}, {"sha": "6f594a7", "ts": "2026-07-06 13:14:23", "type": "배포", "field": "fix: wKey 포맷 통일(YYYYMMDD) + 서머리카드 클릭시 상세 팝업 (방문미팅/Sales활동/신규업체)", "before": "", "after": "6f594a7", "author": "techfinra"}, {"sha": "f512800", "ts": "2026-07-06 13:10:35", "type": "배포", "field": "hotfix: openKpiDetail 함수명 중복 선언 오류 수정 (JS 파싱 실패 원인)", "before": "", "after": "f512800", "author": "techfinra"}, {"sha": "ddf02ab", "ts": "2026-07-06 13:08:16", "type": "배포", "field": "feat: 주차별 팝업 방문미팅/Sales활동/신규업체 상세 테이블 + 히스토리 상세 데이터 저장", "before": "", "after": "ddf02ab", "author": "techfinra"}, {"sha": "6e4f01c", "ts": "2026-07-06 13:03:51", "type": "배포", "field": "fix: 주차별 추세 그래프 최근 5주(한달)만 표시", "before": "", "after": "6e4f01c", "author": "techfinra"}, {"sha": "bb20165", "ts": "2026-07-06 12:59:56", "type": "배포", "field": "feat: 주차별 그래프 점 클릭 → 2중 모달 상세 팝업 (기존 팝업 유지 + 위에 오버레이)", "before": "", "after": "bb20165", "author": "techfinra"}, {"sha": "86925ac", "ts": "2026-07-06 12:06:52", "type": "배포", "field": "feat: 주차별 추세 그래프 과거 데이터 seed 적재 (docx 파싱 기준 25주치)", "before": "", "after": "86925ac", "author": "techfinra"}, {"sha": "ccb68dd", "ts": "2026-07-06 12:02:39", "type": "배포", "field": "fix: 주차별 추세 그래프 변수명 오류 수정 (thisWeekActs→newActivities, newCoList→newCos)", "before": "", "after": "ccb68dd", "author": "techfinra"}, {"sha": "bce908e", "ts": "2026-07-06 11:58:57", "type": "배포", "field": "feat: 이번주 활동 팝업 하단 주차별 추세 그래프 추가 (방문미팅/Sales활동/신규업체, 점 클릭 상세 팝업)", "before": "", "after": "bce908e", "author": "techfinra"}, {"sha": "dcd8824", "ts": "2026-07-06 08:26:02", "type": "배포", "field": "fix: 신용등급확인서(MASS) 227,560,000원으로 업데이트 (2026.07.06)", "before": "", "after": "dcd8824", "author": "techfinra"}, {"sha": "6b374a2", "ts": "2026-07-03 16:53:31", "type": "배포", "field": "fix: 금융중개서비스 HC 항목 byStage 카운트 완전 제외 (테이블 5단계 열에서 미표시)", "before": "", "after": "6b374a2", "author": "techfinra"}, {"sha": "96372eb", "ts": "2026-07-03 16:51:47", "type": "배포", "field": "fix: 팩토링/네트워크 HC 항목 팝업+집계 모두 계약완료에서 제외, 금융중개(HC) 배지로 표시", "before": "", "after": "96372eb", "author": "techfinra"}, {"sha": "eba77b6", "ts": "2026-07-03 16:48:07", "type": "배포", "field": "fix: 내부관리 타겟제품별 - 8단계→5단계(계약완료) 라벨 변경, 네트워크/팩토링 계약완료 카운트 제외", "before": "", "after": "eba77b6", "author": "techfinra"}, {"sha": "6a95283", "ts": "2026-07-03 16:35:02", "type": "배포", "field": "feat: 내부관리 타겟제품별 금액 상세 - 파이프라인 단계별(1/2/3/4/8단계) 건수 열로 변경", "before": "", "after": "6a95283", "author": "techfinra"}, {"sha": "9235a43", "ts": "2026-07-03 16:24:34", "type": "배포", "field": "fix: 변경이력 로그 - GitHub API 대신 하드코딩 커밋 배열로 교체 (50건 초기 반영)", "before": "", "after": "9235a43", "author": "techfinra"}];
+  const GH_COMMITS=[{"sha": "01b9d81", "ts": "2026-07-21 11:12:01", "type": "배포", "field": "fix: applyVisitPatchToDB saveDB 제거(무한루프방지) + applyRMSOMap 구코드 잔재 제거", "before": "", "after": "01b9d81", "author": "techfinra"}, {"sha": "b1eddc8", "ts": "2026-07-21 09:45:25", "type": "배포", "field": "fix: 업로드 안정화 - rowStatus 무관 diff체크, toSave에 applyRMSOMap 적용, commitSave/리스너 후 패치", "before": "", "after": "b1eddc8", "author": "techfinra"}, {"sha": "9967a73", "ts": "2026-07-21 09:42:06", "type": "배포", "field": "fix: 업로드 후 Firebase 리스너가 이전 데이터로 덮어쓰는 버그 수정 - 저장 완료 후 3초간 리스너 무시", "before": "", "after": "9967a73", "author": "techfinra"}, {"sha": "ce58d5e", "ts": "2026-07-21 08:49:39", "type": "배포", "field": "fix: BNK캐피탈 7/16 방문미팅 DB.companies 직접 패치 (한영관 추가) + init 시 자동 적용", "before": "", "after": "ce58d5e", "author": "techfinra"}, {"sha": "0329e4b", "ts": "2026-07-21 08:48:15", "type": "배포", "field": "fix: BNK캐피탈 방문미팅 7/21 한영관 하드코딩 추가 (applyRMSOMap VISIT_PATCH)", "before": "", "after": "0329e4b", "author": "techfinra"}, {"sha": "be866ad", "ts": "2026-07-20 09:52:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (중진공팩토링 0.50억, 중진공네트워크론 2.90억)", "before": "", "after": "be866ad", "author": "techfinra"}, {"sha": "3dc3f72", "ts": "2026-07-20 09:38:17", "type": "배포", "field": "feat: RM/SO 분장표(87개 업체) + applyRMSOMap + 한영관 오버레이 제거 + 크레디뷰 253,565,000원", "before": "", "after": "3dc3f72", "author": "techfinra"}, {"sha": "3fe322a", "ts": "2026-07-13 13:31:14", "type": "배포", "field": "fix: 금융중개서비스 금액 업데이트 (수출입 0.44억, 중진공팩토링 0.47억, 중진공네트워크론 2.79억, 신한 0.01억)", "before": "", "after": "3fe322a", "author": "techfinra"}, {"sha": "bf0e0c8", "ts": "2026-07-13 13:27:16", "type": "배포", "field": "feat: Weekly Trend 그래프에서 신규업체 선 제거 (방문미팅+Sales활동 2선만)", "before": "", "after": "bf0e0c8", "author": "techfinra"}, {"sha": "53b1542", "ts": "2026-07-13 13:25:49", "type": "배포", "field": "hotfix: thisEntry hist.push 누락 복원 - 이번주 그래프 미표시 버그 수정", "before": "", "after": "53b1542", "author": "techfinra"}, {"sha": "0893124", "ts": "2026-07-13 13:24:33", "type": "배포", "field": "fix: 저번주 lastEntry 신규업체 수치 savedHist에서 보존 (newCo:0 덮어쓰기 방지)", "before": "", "after": "0893124", "author": "techfinra"}, {"sha": "33dc29b", "ts": "2026-07-13 13:23:38", "type": "배포", "field": "fix: 저번주 그래프 수치 실시간 계산으로 수정 (localStorage 구버전 데이터 무시)", "before": "", "after": "33dc29b", "author": "techfinra"}, {"sha": "6f07f43", "ts": "2026-07-13 13:01:16", "type": "배포", "field": "fix: 이번주 그래프 수치 실시간 반영 (seed에서 현재주차 제거) + 크레디뷰 243,525,000원 + JSON 개행 이스케이프 수정", "before": "", "after": "6f07f43", "author": "techfinra"}, {"sha": "f065812", "ts": "2026-07-07 07:59:58", "type": "배포", "field": "hotfix: revChartHtml const 중복 선언 → 대입으로 수정", "before": "", "after": "f065812", "author": "techfinra"}, {"sha": "d038aaa", "ts": "2026-07-07 07:58:19", "type": "배포", "field": "fix: Revenue Trend 그래프 - localStorage 없어도 현재 매출 직접 계산해서 즉시 표시", "before": "", "after": "d038aaa", "author": "techfinra"}, {"sha": "9a1b0b7", "ts": "2026-07-07 07:56:31", "type": "배포", "field": "hotfix: openKpiDetail revChartHtml 초기화 + innerHTML 연산자 우선순위 버그 수정", "before": "", "after": "9a1b0b7", "author": "techfinra"}, {"sha": "ab823be", "ts": "2026-07-07 07:54:40", "type": "배포", "field": "feat: Sales 실적 매출 팝업 상단 서비스별 5선 Revenue Trend 그래프 추가", "before": "", "after": "ab823be", "author": "techfinra"}, {"sha": "9e64da6", "ts": "2026-07-07 07:48:19", "type": "배포", "field": "feat: 한영관 카드 불투명 오버레이 + 업데이트 예정 배지 추가", "before": "", "after": "9e64da6", "author": "techfinra"}, {"sha": "63010f7", "ts": "2026-07-07 07:43:41", "type": "배포", "field": "feat: RM 한영관 추가 (목표 0원, 개인별 Sales 활동 현황 포함)", "before": "", "after": "63010f7", "author": "techfinra"}, {"sha": "c455510", "ts": "2026-07-07 07:41:07", "type": "배포", "field": "fix: 팝업 타이틀 '지난주 대비' 제거 + 'B 이번주 신규' 텍스트 수정", "before": "", "after": "c455510", "author": "techfinra"}, {"sha": "7cb2803", "ts": "2026-07-07 07:39:18", "type": "배포", "field": "fix: C·신규업체 배지 색상 초록→보라색", "before": "", "after": "7cb2803", "author": "techfinra"}, {"sha": "88e34fc", "ts": "2026-07-07 07:37:15", "type": "배포", "field": "fix: Weekly Trend 그래프 summaryCards 바로 위로 + 여백 조정", "before": "", "after": "88e34fc", "author": "techfinra"}, {"sha": "75a6f97", "ts": "2026-07-06 18:04:49", "type": "배포", "field": "fix: 이번주활동 팝업 Weekly Trend 그래프 다시 맨 아래로 복원", "before": "", "after": "75a6f97", "author": "techfinra"}, {"sha": "e67df92", "ts": "2026-07-06 18:02:37", "type": "배포", "field": "feat: 이번주활동 팝업 그래프 상단 배치 + Weekly Trend 타이틀 디자인 개선", "before": "", "after": "e67df92", "author": "techfinra"}, {"sha": "209ac2f", "ts": "2026-07-06 14:10:29", "type": "배포", "field": "feat: 개인별 활동 팝업에 담당자별 5주 방문미팅/Sales활동 추세 그래프 추가", "before": "", "after": "209ac2f", "author": "techfinra"}, {"sha": "2d91f73", "ts": "2026-07-06 13:59:28", "type": "배포", "field": "fix: 마지막주 X축 레이블 점 바로 아래 그래프 내부 중앙 배치", "before": "", "after": "2d91f73", "author": "techfinra"}, {"sha": "d04c33b", "ts": "2026-07-06 13:56:49", "type": "배포", "field": "feat: 그래프 마지막점 숫자 오른쪽 배치 + X축 이번주 레이블 한줄 오른쪽", "before": "", "after": "d04c33b", "author": "techfinra"}, {"sha": "876e8e2", "ts": "2026-07-06 13:52:45", "type": "배포", "field": "fix: 그래프 모든 점 클릭 가능(pointer-events:all) + 이번주 레이블 두줄 + 여백 조정", "before": "", "after": "876e8e2", "author": "techfinra"}, {"sha": "b992b91", "ts": "2026-07-06 13:47:37", "type": "배포", "field": "fix: 그래프 직선+라이트모드배경+모든점 클릭가능 + 서머리카드 클릭/▶클릭 제거", "before": "", "after": "b992b91", "author": "techfinra"}, {"sha": "208ea4e", "ts": "2026-07-06 13:44:19", "type": "배포", "field": "feat: 그래프 고급화(글로우/스플라인/데이터레이블) + 서머리카드 클릭기능/▶클릭 제거", "before": "", "after": "208ea4e", "author": "techfinra"}, {"sha": "def27d6", "ts": "2026-07-06 13:41:25", "type": "배포", "field": "fix: WH_SEED 화~월 기준 전면 재계산 (06/23주 방문미팅 8건 등) + 크레디뷰 항목 통합 (경영진단보고서→크레디뷰)", "before": "", "after": "def27d6", "author": "techfinra"}, {"sha": "a379321", "ts": "2026-07-06 13:31:53", "type": "배포", "field": "feat: 과거 주차 visitList/actList 상세 데이터 전체 반영 + 단일점 클릭 가능", "before": "", "after": "a379321", "author": "techfinra"}, {"sha": "696a68b", "ts": "2026-07-06 13:27:10", "type": "배포", "field": "fix: 06/23~06/29 방문미팅 1→8건 수정 (전사 기준, 신한캐피탈+신한투자증권+우리은행+NH농협은행+키움인베스트먼트+메인비즈협회+전", "before": "", "after": "696a68b", "author": "techfinra"}, {"sha": "f185376", "ts": "2026-07-06 13:25:56", "type": "배포", "field": "fix: WH_SEED label 전면 교정 - wKey 기준 정확한 주차 범위로 수정", "before": "", "after": "f185376", "author": "techfinra"}, {"sha": "9a2ad23", "ts": "2026-07-06 13:23:22", "type": "배포", "field": "fix: seed 수치 docx 재파싱 기준으로 전면 교정 (06/23주 visit:1,act:13 확인)", "before": "", "after": "9a2ad23", "author": "techfinra"}, {"sha": "4975cf9", "ts": "2026-07-06 13:20:49", "type": "배포", "field": "fix: 그래프 날짜짤림/밝기개선 + seed 강제갱신 + 점 클릭시 해당항목만 팝업", "before": "", "after": "4975cf9", "author": "techfinra"}, {"sha": "d8ca9e3", "ts": "2026-07-06 13:16:16", "type": "배포", "field": "hotfix: _wKey 선언 순서 오류 수정 - summaryCards 앞으로 이동 (팝업 안 뜨는 버그)", "before": "", "after": "d8ca9e3", "author": "techfinra"}, {"sha": "6f594a7", "ts": "2026-07-06 13:14:23", "type": "배포", "field": "fix: wKey 포맷 통일(YYYYMMDD) + 서머리카드 클릭시 상세 팝업 (방문미팅/Sales활동/신규업체)", "before": "", "after": "6f594a7", "author": "techfinra"}, {"sha": "f512800", "ts": "2026-07-06 13:10:35", "type": "배포", "field": "hotfix: openKpiDetail 함수명 중복 선언 오류 수정 (JS 파싱 실패 원인)", "before": "", "after": "f512800", "author": "techfinra"}, {"sha": "ddf02ab", "ts": "2026-07-06 13:08:16", "type": "배포", "field": "feat: 주차별 팝업 방문미팅/Sales활동/신규업체 상세 테이블 + 히스토리 상세 데이터 저장", "before": "", "after": "ddf02ab", "author": "techfinra"}, {"sha": "6e4f01c", "ts": "2026-07-06 13:03:51", "type": "배포", "field": "fix: 주차별 추세 그래프 최근 5주(한달)만 표시", "before": "", "after": "6e4f01c", "author": "techfinra"}, {"sha": "bb20165", "ts": "2026-07-06 12:59:56", "type": "배포", "field": "feat: 주차별 그래프 점 클릭 → 2중 모달 상세 팝업 (기존 팝업 유지 + 위에 오버레이)", "before": "", "after": "bb20165", "author": "techfinra"}, {"sha": "86925ac", "ts": "2026-07-06 12:06:52", "type": "배포", "field": "feat: 주차별 추세 그래프 과거 데이터 seed 적재 (docx 파싱 기준 25주치)", "before": "", "after": "86925ac", "author": "techfinra"}, {"sha": "ccb68dd", "ts": "2026-07-06 12:02:39", "type": "배포", "field": "fix: 주차별 추세 그래프 변수명 오류 수정 (thisWeekActs→newActivities, newCoList→newCos)", "before": "", "after": "ccb68dd", "author": "techfinra"}, {"sha": "bce908e", "ts": "2026-07-06 11:58:57", "type": "배포", "field": "feat: 이번주 활동 팝업 하단 주차별 추세 그래프 추가 (방문미팅/Sales활동/신규업체, 점 클릭 상세 팝업)", "before": "", "after": "bce908e", "author": "techfinra"}, {"sha": "dcd8824", "ts": "2026-07-06 08:26:02", "type": "배포", "field": "fix: 신용등급확인서(MASS) 227,560,000원으로 업데이트 (2026.07.06)", "before": "", "after": "dcd8824", "author": "techfinra"}, {"sha": "6b374a2", "ts": "2026-07-03 16:53:31", "type": "배포", "field": "fix: 금융중개서비스 HC 항목 byStage 카운트 완전 제외 (테이블 5단계 열에서 미표시)", "before": "", "after": "6b374a2", "author": "techfinra"}, {"sha": "96372eb", "ts": "2026-07-03 16:51:47", "type": "배포", "field": "fix: 팩토링/네트워크 HC 항목 팝업+집계 모두 계약완료에서 제외, 금융중개(HC) 배지로 표시", "before": "", "after": "96372eb", "author": "techfinra"}, {"sha": "eba77b6", "ts": "2026-07-03 16:48:07", "type": "배포", "field": "fix: 내부관리 타겟제품별 - 8단계→5단계(계약완료) 라벨 변경, 네트워크/팩토링 계약완료 카운트 제외", "before": "", "after": "eba77b6", "author": "techfinra"}, {"sha": "6a95283", "ts": "2026-07-03 16:35:02", "type": "배포", "field": "feat: 내부관리 타겟제품별 금액 상세 - 파이프라인 단계별(1/2/3/4/8단계) 건수 열로 변경", "before": "", "after": "6a95283", "author": "techfinra"}];
   try{
     let logs=[];
     try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
@@ -7653,6 +7653,27 @@ function init(){
   updateFilterOptions();
   updateUploadHistory();
   loadDBFromFirebase(); // Firebase 동기화
+
+  // ── [진단] 4단계 마이그레이션 검증 로그 (Firebase 로드 후) ──
+  setTimeout(()=>{
+    try{
+      const dist={};
+      for(const c of DB.companies){
+        const k=`[${c._stageNum}] ${(c.진행단계||'(빈값)')}`;
+        dist[k]=(dist[k]||0)+1;
+      }
+      console.log('%c[4단계 진단] 진행단계 텍스트 → _stageNum 분포','color:#f59e0b;font-weight:bold');
+      console.table(dist);
+      const conf=DB.companies.filter(c=>c._stageNum===4);
+      console.log('%c[4단계 진단] 계약·운영(4단계) 업체 목록','color:#059669;font-weight:bold');
+      console.table(conf.map(c=>({업체명:c.업체명,타겟제품:c.타겟제품,진행단계:c.진행단계,금액:((getPricing(c).amount||0)/1e8).toFixed(2)+'억'})));
+      const missed=DB.companies.filter(c=>c._stageNum!==4).map(c=>({co:c,p:getPricing(c)})).filter(x=>x.p.type==='confirmed'&&x.p.amount>0);
+      if(missed.length){
+        console.log('%c[4단계 진단] ⚠️ confirmed 금액인데 4단계 아님 (매출 누락 의심)','color:#ef4444;font-weight:bold');
+        console.table(missed.map(x=>({업체명:x.co.업체명,타겟제품:x.co.타겟제품,진행단계:x.co.진행단계,stageNum:x.co._stageNum,금액:(x.p.amount/1e8).toFixed(2)+'억'})));
+      }
+    }catch(e){console.warn('진단 로그 오류',e);}
+  }, 3000);
 }
 
 // =====================================================
@@ -8193,18 +8214,18 @@ function buildReportHtml(range){
   const luStr=lu?new Date(lu).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}):'—';
 
   // ── KPI 데이터 ──
-  const pipeline=cos.filter(c=>c._stageNum>0&&c._stageNum<5).length;
-  const pipeCoCount=new Set(cos.filter(c=>c._stageNum>0&&c._stageNum<5).map(c=>c.업체명)).size;
-  const confirmed=cos.filter(c=>c._stageNum===5).length;
-  const confCoCount=new Set(cos.filter(c=>c._stageNum===5).map(c=>c.업체명)).size;
+  const pipeline=cos.filter(c=>c._stageNum>0&&c._stageNum<4).length;
+  const pipeCoCount=new Set(cos.filter(c=>c._stageNum>0&&c._stageNum<4).map(c=>c.업체명)).size;
+  const confirmed=cos.filter(c=>c._stageNum===4).length;
+  const confCoCount=new Set(cos.filter(c=>c._stageNum===4).map(c=>c.업체명)).size;
   let actualRev=0;
-  for(const co of cos.filter(c=>c._stageNum===5)) actualRev+=getPricing(co).amount||0;
+  for(const co of cos.filter(c=>c._stageNum===4)) actualRev+=getPricing(co).amount||0;
   const achRate=actualRev/(TOTAL_PLAN*1e8)||0;
   const achColor=achRate>=0.8?'#10b981':achRate>=0.4?'#f59e0b':'#ef4444';
 
   // ── 서비스 진행률 ──
   const pm={};
-  for(const co of cos.filter(c=>c._stageNum===5)){const p=getPricing(co);const k=normalizeProduct(co.타겟제품||'');pm[k]=(pm[k]||0)+(p.amount||0);}
+  for(const co of cos.filter(c=>c._stageNum===4)){const p=getPricing(co);const k=normalizeProduct(co.타겟제품||'');pm[k]=(pm[k]||0)+(p.amount||0);}
   pm['크레디뷰']=(pm['크레디뷰']||0)+CREDIVIEW_MASS_AMT; // Mass 실적
   const services=[
     {key:'DATA판매',plan:14.79,color:'#3b82f6'},
@@ -8230,10 +8251,10 @@ function buildReportHtml(range){
   }).join('');
 
   // ── 파이프라인 단계 ──
-  const stageCounts=[0,0,0,0,0,0];
-  for(const co of cos) stageCounts[co._stageNum||1]++;
+  const stageCounts=[0,0,0,0,0];
+  for(const co of cos) stageCounts[Math.min(co._stageNum||1,4)]++;
   const maxCnt=Math.max(...stageCounts,1);
-  const stageRows=[1,2,3,4,5].map(n=>{
+  const stageRows=[1,2,3,4].map(n=>{
     const cnt=stageCounts[n];
     const pct=cnt/maxCnt*100;
     const col=STAGE5_COLORS[n];
@@ -8255,9 +8276,9 @@ function buildReportHtml(range){
   const peopleRows=allPeople.map(({n,r})=>{
     const my=cos.filter(c=>c.RM===n||c.SO===n);
     const myCoNames=new Set(my.map(c=>c.업체명));
-    const conf=new Set(my.filter(c=>c._stageNum===5).map(c=>c.업체명)).size;
-    const act=my.filter(c=>c._stageNum>0&&c._stageNum<5).length;
-    let rev=0; for(const co of my.filter(c=>c._stageNum===5)) rev+=getPricing(co).amount||0;
+    const conf=new Set(my.filter(c=>c._stageNum===4).map(c=>c.업체명)).size;
+    const act=my.filter(c=>c._stageNum>0&&c._stageNum<4).length;
+    let rev=0; for(const co of my.filter(c=>c._stageNum===4)) rev+=getPricing(co).amount||0;
     const stageBreak=[1,2,3,4].map(s=>{
       const cnt=my.filter(c=>(c._stageNum||1)===s).length;
       return cnt?`<span style="display:inline-block;background:${STAGE5_COLORS[s]}22;color:${STAGE5_COLORS[s]};padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;margin-right:3px">${s}.${cnt}</span>`:'';
@@ -8353,7 +8374,7 @@ function buildReportHtml(range){
       <!-- 파이프라인 단계 -->
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px">
         <div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px">파이프라인 단계별 현황</div>
-        <div style="font-size:10px;color:#94a3b8;margin-bottom:12px">5단계 기준 전사 영업 현황</div>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:12px">4단계 기준 전사 영업 현황</div>
         <table style="width:100%;border-collapse:collapse">${stageRows}</table>
       </div>
     </div>
