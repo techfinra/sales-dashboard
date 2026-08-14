@@ -872,6 +872,7 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
         <button class="btn" onclick="renderExtractTab('rm')" id="extractBtnRM" style="font-weight:700">📌 업무진행현황(RM)</button>
         <button class="btn btn-s" onclick="renderExtractTab('work')" id="extractBtnWork">📌 업무진행현황(SO)</button>
         <button class="btn btn-s" onclick="renderExtractTab('weekly')" id="extractBtnWeekly">📊 주간보고</button>
+        <button class="btn btn-s" onclick="renderExtractTab('aianalysis')" id="extractBtnAI">🤖 AI주간분석</button>
       </div>
     </div>
 
@@ -4916,6 +4917,7 @@ function renderExtractTab(mode){
   document.getElementById('extractBtnRM').className = mode==='rm' ? 'btn' : 'btn btn-s';
   document.getElementById('extractBtnWork').className = mode==='work' ? 'btn' : 'btn btn-s';
   document.getElementById('extractBtnWeekly').className = mode==='weekly' ? 'btn' : 'btn btn-s';
+  document.getElementById('extractBtnAI').className = mode==='aianalysis' ? 'btn' : 'btn btn-s';
 
   const wr = getWeekRange();
   // 다음주 시작일 (진행 예정 기준)
@@ -4929,6 +4931,7 @@ function renderExtractTab(mode){
 
   if(mode==='rm') renderExtractRM(wr, nextStart);
   else if(mode==='work') renderExtractWork(wr, nextStart);
+  else if(mode==='aianalysis') renderExtractAI(wr, nextStart);
   else renderExtractWeekly(wr);
 }
 
@@ -5175,6 +5178,205 @@ function renderExtractWork(wr, nextStart){
 }
 
 // ── 주간보고 생성 (이번주 기준) ──
+// ── AI 주간 분석 ──
+function renderExtractAI(wr, nextStart){
+  const cos = getEffectiveCompanies();
+  const wb = getWeeklyBase();
+  const prevSnap = wb?(wb.snapshot||[]):[];
+  const el = document.getElementById('extractContent');
+  const fmt = d=>`${d.getMonth()+1}/${d.getDate()}`;
+  const SLABELS2=['','초기컨텍','실무협의','제안·MOU','계약·운영'];
+  const norm = s=>(s||'').replace(/\s/g,'');
+
+  // 이번주 활동 업체
+  const changedCos = cos.filter(co=>{
+    const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m;
+    while((m=re.exec(co.진행현황||''))!==null){
+      const d=new Date(new Date().getFullYear(),parseInt(m[1])-1,parseInt(m[2]));
+      if(d>=wr.thisStart&&d<=wr.thisEnd) return true;
+    }
+    return false;
+  });
+
+  // 신규업체
+  const prevNames = new Set(prevSnap.map(c=>norm(c.업체명||'')));
+  const {thisStart,thisEnd} = getWeekRange();
+  const newCos = cos.filter(c=>{
+    if(c._stageNum<=0||c._stageNum>=4) return false;
+    if(!prevNames.has(norm(c.업체명||''))) return true;
+    const fd=getFirstActivityDate(c);
+    return fd&&fd>=thisStart&&fd<=thisEnd;
+  });
+
+  // 단계변동
+  const _nsW=s=>(s||'').replace(/\s/g,'');
+  const prevMap={};
+  for(const c of prevSnap){
+    const k=_nsW(c.업체명)+'|'+_nsW(c.타겟제품||'')+'|'+_nsW(c._subProd||'');
+    prevMap[k]=c._stageNum||1;
+  }
+  const stageChanged=cos.filter(c=>{
+    const k=_nsW(c.업체명)+'|'+_nsW(c.타겟제품||'')+'|'+_nsW(c._subProd||'');
+    const prev=prevMap[k];
+    if(prev===undefined) return false;
+    return c._stageNum > prev;
+  });
+
+  // 다음주 일정
+  const SCHED_EXCLUDE=['D-CLOUD운영본부 당직자','연차예정','당직자','연차'];
+  const schedules = getScheduleData().filter(s=>{
+    const dt=new Date(s.start.substring(0,10));
+    if(dt<nextStart) return false;
+    return !SCHED_EXCLUDE.some(ex=>(s.title||'').includes(ex));
+  }).sort((a,b)=>a.start.localeCompare(b.start));
+
+  // 계약임박 업체 (3단계)
+  const stage3Cos = cos.filter(c=>c._stageNum===3);
+  // 장기 미활동 업체 (2~3단계인데 진행현황 날짜가 2주 이상 없음)
+  const twoWeeksAgo = new Date(wr.thisEnd); twoWeeksAgo.setDate(twoWeeksAgo.getDate()-14);
+  const dormantCos = cos.filter(c=>{
+    if(c._stageNum<2||c._stageNum>=4) return false;
+    const fd=getFirstActivityDate(c);
+    if(!fd) return true;
+    // 마지막 활동일 찾기
+    let lastDate=null;
+    const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)/gm; let m;
+    while((m=re.exec(c.진행현황||''))!==null){
+      const d=new Date(new Date().getFullYear(),parseInt(m[1])-1,parseInt(m[2]));
+      if(!lastDate||d>lastDate) lastDate=d;
+    }
+    return lastDate&&lastDate<twoWeeksAgo;
+  }).slice(0,5);
+
+  const cardBg='background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px';
+  const secTitle=(icon,txt,col)=>`<div style="font-size:13px;font-weight:800;color:${col};margin-bottom:12px;display:flex;align-items:center;gap:6px">${icon} ${txt}</div>`;
+
+  let html=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:800;color:var(--t0)">🤖 AI 주간 분석 <span style="font-size:11px;font-weight:400;color:var(--t2)">${fmt(wr.thisStart)}(월)~${fmt(wr.thisEnd)}(금)</span></div>
+    <button onclick="copyExtractText()" class="btn btn-s">📋 복사</button>
+  </div>`;
+
+  // ① 이번주 핵심 요약
+  html+=`<div style="${cardBg}">
+    ${secTitle('📊','이번주 핵심 요약','var(--a1)')}
+    <div style="font-size:12px;color:var(--t1);line-height:1.8">
+      이번주(${fmt(wr.thisStart)}~${fmt(wr.thisEnd)}) 총 <strong>${changedCos.length}개 업체</strong> 활동,
+      <strong>신규 ${newCos.length}개</strong> 업체 진입,
+      <strong>단계 상향 ${stageChanged.length}건</strong> 발생.
+      ${stageChanged.length>0?`<br>📈 단계 변동: ${stageChanged.map(c=>`<strong>${c.업체명}</strong>(${SLABELS2[prevMap[_nsW(c.업체명)+'|'+_nsW(c.타겟제품||'')+'|'+_nsW(c._subProd||'')]||1]}→${SLABELS2[c._stageNum]})`).join(', ')}`:'' }
+      ${newCos.length>0?`<br>🆕 신규 진입: ${newCos.map(c=>`<strong>${c.업체명}</strong>`).join(', ')}`:'' }
+    </div>
+  </div>`;
+
+  // ② 업체별 상세 분석 (이번주 활동 기준)
+  if(changedCos.length){
+    html+=`<div style="${cardBg}">
+      ${secTitle('🔍','업체별 현황 분석','var(--t0)')}`;
+    for(const co of changedCos.slice(0,15)){
+      // 진행현황에서 날짜순 정렬
+      const lines=[];
+      const re=/(?:^|\n)\((\d{1,2})\/(\d{1,2})\)([^\n]*)/gm; let m;
+      while((m=re.exec(co.진행현황||''))!==null){
+        lines.push({mm:parseInt(m[1]),dd:parseInt(m[2]),txt:m[3].trim()});
+      }
+      lines.sort((a,b)=>a.mm*100+a.dd-(b.mm*100+b.dd));
+      const lastLine=lines[lines.length-1];
+      const thisWeekLines=lines.filter(l=>{
+        const d=new Date(new Date().getFullYear(),l.mm-1,l.dd);
+        return d>=wr.thisStart&&d<=wr.thisEnd;
+      });
+
+      // 단계별 다음 액션 예측
+      let nextAction='';
+      const stage=co._stageNum||1;
+      if(stage===1) nextAction='실무 담당자 발굴 및 소개 자료 전달 → 실무협의 미팅 추진';
+      else if(stage===2) nextAction='니즈 확인 및 견적/제안서 발송 → 제안·MOU 단계 전환 추진';
+      else if(stage===3) nextAction='계약 조건 협의 및 내부 결재 지원 → 계약 클로징 추진';
+      else if(stage===4) nextAction='계약 이행 및 추가 업셀링 기회 탐색';
+
+      // 기간 분석
+      const firstLine=lines[0];
+      let periodStr='';
+      if(firstLine){
+        const now=new Date();
+        const firstDate=new Date(now.getFullYear(),firstLine.mm-1,firstLine.dd);
+        const diffWeeks=Math.round((now-firstDate)/(7*86400000));
+        if(diffWeeks>0) periodStr=`접촉 ${diffWeeks}주차`;
+      }
+
+      html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:800;color:var(--t0)">${co.업체명}</span>
+          ${co.타겟제품?`<span style="font-size:10px;background:rgba(99,102,241,.12);color:var(--a1);padding:1px 6px;border-radius:4px">${co.타겟제품}</span>`:''}
+          <span style="font-size:10px;color:var(--t2)">${SLABELS2[stage]}</span>
+          ${periodStr?`<span style="font-size:10px;color:var(--t2);margin-left:auto">${periodStr}</span>`:''}
+        </div>
+        ${thisWeekLines.length?`<div style="font-size:11px;color:var(--t1);margin-bottom:4px;padding-left:8px">
+          ${thisWeekLines.map(l=>`<span style="color:var(--a1)">(${l.mm}/${l.dd})</span> ${l.txt}`).join('<br>')}
+        </div>`:''}
+        <div style="font-size:11px;color:#f59e0b;padding-left:8px">
+          ▶ <strong>다음 액션:</strong> ${nextAction}
+        </div>
+      </div>`;
+    }
+    html+='</div>';
+  }
+
+  // ③ 계약 임박 업체
+  if(stage3Cos.length){
+    html+=`<div style="${cardBg}">
+      ${secTitle('🎯','계약 임박 업체 (제안·MOU 단계)','#f59e0b')}
+      <div style="font-size:12px;color:var(--t1)">`;
+    for(const co of stage3Cos){
+      html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-weight:700;color:var(--t0)">${co.업체명}</span>
+        ${co.타겟제품?`<span style="font-size:10px;background:rgba(245,158,11,.12);color:#f59e0b;padding:1px 6px;border-radius:4px">${co.타겟제품}</span>`:''}
+        <span style="color:var(--t2);font-size:11px">${co.RM||''} / ${co.SO||''}</span>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  // ④ 팔로업 필요 업체
+  if(dormantCos.length){
+    html+=`<div style="${cardBg}">
+      ${secTitle('⚠️','팔로업 필요 업체 (2주 이상 미활동)','#ef4444')}
+      <div style="font-size:12px;color:var(--t1)">`;
+    for(const co of dormantCos){
+      html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-weight:700;color:var(--t0)">${co.업체명}</span>
+        <span style="font-size:10px;color:var(--t2)">${SLABELS2[co._stageNum||1]}</span>
+        <span style="color:var(--t2);font-size:11px">${co.RM||''} / ${co.SO||''}</span>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  // ⑤ 다음주 주요 일정
+  if(schedules.length){
+    html+=`<div style="${cardBg}">
+      ${secTitle('📅','다음주 주요 일정 및 준비사항','#3b82f6')}
+      <div style="font-size:12px;color:var(--t1)">`;
+    for(const s of schedules.slice(0,10)){
+      const dt=new Date(s.start.substring(0,10));
+      const days=['일','월','화','수','목','금','토'];
+      // 해당 업체 단계 찾기
+      const relCo=cos.find(c=>s.title.includes(c.업체명)||c.업체명.includes(s.title));
+      const stageStr=relCo?` (${SLABELS2[relCo._stageNum||1]})`:'';
+      html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="color:#3b82f6;font-weight:700;margin-right:8px">${dt.getMonth()+1}/${dt.getDate()}(${days[dt.getDay()]})</span>
+        <span style="font-weight:600;color:var(--t0)">${s.title}</span>
+        <span style="color:var(--t2);font-size:11px">${stageStr}</span>
+        ${relCo?`<div style="font-size:11px;color:#f59e0b;padding-left:16px;margin-top:2px">▶ 준비: ${relCo._stageNum===3?'계약 조건 최종 확인 및 클로징 자료 준비':relCo._stageNum===2?'제안서 및 견적서 준비':'소개 자료 및 사례 준비'}</div>`:''}
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  el.innerHTML=html;
+}
+
 function renderExtractWeekly(wr){
   const el=document.getElementById('extractContent');
   const cos=getEffectiveCompanies();
@@ -7156,7 +7358,7 @@ async function loadChangeLogFromDB(){
 const GH_COMMIT_KEY='ghCommitLog_v1';
 async function syncGitHubCommits(){
   // ── 하드코딩된 GitHub 커밋 이력 (push 시 자동 갱신) ──
-  const GH_COMMITS=[{"sha": "3e27694", "ts": "2026-08-14 11:36:11", "type": "배포", "field": "fix: 이번주 Sales활동/방문미팅 팝업 RM/SO KNOWN_RM_SO_MAP 실시간 적용", "before": "", "after": "3e27694", "author": "techfinra"}, {"sha": "86815cc", "ts": "2026-08-14 11:33:56", "type": "배포", "field": "fix: actList/visitList 렌더링 시 KNOWN_RM_SO_MAP으로 RM/SO 실시간 적용", "before": "", "after": "86815cc", "author": "techfinra"}, {"sha": "4eac667", "ts": "2026-08-14 11:27:19", "type": "배포", "field": "fix: getEffectiveCompanies KNOWN_RM_SO_MAP 항상 강제 적용 - Firebase DB 값 무시", "before": "", "after": "4eac667", "author": "techfinra"}, {"sha": "9e5f19c", "ts": "2026-08-14 11:26:04", "type": "배포", "field": "fix: 워드 파싱 RM/SO 우선 적용 - _srcRM/_srcSO 저장 후 applyRMSOMap에서 우선 사용", "before": "", "after": "9e5f19c", "author": "techfinra"}, {"sha": "ada836d", "ts": "2026-08-14 11:23:29", "type": "배포", "field": "fix: 애큐온저축은행/캐피탈 KNOWN_RM_SO_MAP 김종환으로 수정", "before": "", "after": "ada836d", "author": "techfinra"}, {"sha": "02e4a00", "ts": "2026-08-14 10:57:02", "type": "배포", "field": "fix: applyRMSOMap 워드 파일 RM/SO 우선 적용 - KNOWN_RM_SO_MAP은 보조 역할", "before": "", "after": "02e4a00", "author": "techfinra"}, {"sha": "7772720", "ts": "2026-08-11 09:10:43", "type": "배포", "field": "fix: getCF에서 중진공창업지원처/PACM 직접 반환 - 모든 경로 차단", "before": "", "after": "7772720", "author": "techfinra"}, {"sha": "ab03c32", "ts": "2026-08-11 09:08:16", "type": "배포", "field": "fix: Firebase 수신 시점에도 중진공창업지원처/PACM 강제 패치 - 모든 경로 차단", "before": "", "after": "ab03c32", "author": "techfinra"}, {"sha": "834b838", "ts": "2026-08-11 09:05:57", "type": "배포", "field": "fix: getCFAdminData 중진공창업지원처 월100만/PACM 월30만 분할인식 하드코딩", "before": "", "after": "834b838", "author": "techfinra"}, {"sha": "db4677a", "ts": "2026-08-11 09:00:56", "type": "배포", "field": "fix: 중진공창업지원처 COMPANY_FINANCIALS 키 기업DB조회로 수정 + cfAdmin 패치 타겟제품 매칭", "before": "", "after": "db4677a", "author": "techfinra"}, {"sha": "d60cc6a", "ts": "2026-08-11 08:55:57", "type": "배포", "field": "fix: cfAdmin 패치 업체명만으로 찾기 - 중진공창업지원처/PACM 계약금액 정확히 반영", "before": "", "after": "d60cc6a", "author": "techfinra"}, {"sha": "d10ae38", "ts": "2026-08-11 08:50:50", "type": "배포", "field": "fix: cfAdmin 중진공창업지원처(500만)/PACM(561만) 계약금액 강제 패치", "before": "", "after": "d10ae38", "author": "techfinra"}, {"sha": "68eca4c", "ts": "2026-08-11 08:45:21", "type": "배포", "field": "fix: 중진공창업지원처 월100만/PACM 월30만 분할인식 설정", "before": "", "after": "68eca4c", "author": "techfinra"}, {"sha": "d988697", "ts": "2026-08-11 08:37:48", "type": "배포", "field": "fix: 신규업체 신한은행(크레디뷰) → 신한은행(기업여신심사부) 표시", "before": "", "after": "d988697", "author": "techfinra"}, {"sha": "6cc0e69", "ts": "2026-08-10 11:53:46", "type": "배포", "field": "fix: 크레디뷰 286,055,000원 + 금융중개 팩토링 0.58억/네트워크론 3.03억 업데이트", "before": "", "after": "6cc0e69", "author": "techfinra"}, {"sha": "0cf6113", "ts": "2026-08-06 14:42:51", "type": "배포", "field": "fix: SO 박경민/육태우 목표매출 각 14.725억 (29.45억 절반)", "before": "", "after": "0cf6113", "author": "techfinra"}, {"sha": "f5d7ec4", "ts": "2026-08-04 09:22:30", "type": "배포", "field": "fix: 인천상공회의소 SO 미정 (빈값 처리)", "before": "", "after": "f5d7ec4", "author": "techfinra"}, {"sha": "893ca32", "ts": "2026-08-04 09:21:48", "type": "배포", "field": "fix: KNOWN_RM_SO_MAP 인천상공회의소 추가 (RM:전힘찬, SO:박경민)", "before": "", "after": "893ca32", "author": "techfinra"}, {"sha": "ddde94d", "ts": "2026-08-03 22:26:11", "type": "배포", "field": "fix: 추출 진행예정 동일 제목 중복 제거 - 가장 가까운 날짜 1건만 표시", "before": "", "after": "ddde94d", "author": "techfinra"}, {"sha": "213646f", "ts": "2026-08-03 22:16:57", "type": "배포", "field": "feat: 추출 RM 업무진행현황 SO 동일 디자인 적용 + 박선정 RM/SO 모두 인식", "before": "", "after": "213646f", "author": "techfinra"}, {"sha": "c3ab44e", "ts": "2026-08-03 22:04:38", "type": "배포", "field": "fix: 달성매출 표시 전체 소수 셋째자리 반올림으로 통일", "before": "", "after": "c3ab44e", "author": "techfinra"}, {"sha": "601b7f0", "ts": "2026-08-03 22:00:47", "type": "배포", "field": "fix: RM Sales 카드 합계 fmtFloorEok 반올림 적용", "before": "", "after": "601b7f0", "author": "techfinra"}, {"sha": "88beca5", "ts": "2026-08-03 21:57:31", "type": "배포", "field": "fix: RM Sales 합계 표시 fmtFloorEok 반올림으로 변경", "before": "", "after": "88beca5", "author": "techfinra"}, {"sha": "9e21a3f", "ts": "2026-08-03 21:54:24", "type": "배포", "field": "fix: fmtFloorEok 버림→반올림 변경 (소수 셋째자리 반올림)", "before": "", "after": "9e21a3f", "author": "techfinra"}, {"sha": "0c27a3f", "ts": "2026-08-03 21:46:45", "type": "배포", "field": "feat: 추출탭 업무진행현황(RM) 추가 - 이창희/김종환/한영관/박선정 카드", "before": "", "after": "0c27a3f", "author": "techfinra"}, {"sha": "7d40d3e", "ts": "2026-08-03 21:37:16", "type": "배포", "field": "feat: 추출 바로가기 고객솔루션 주간보고 링크 추가", "before": "", "after": "7d40d3e", "author": "techfinra"}, {"sha": "b94850f", "ts": "2026-08-03 21:30:06", "type": "배포", "field": "fix: 크레디뷰 274,790,000원 + 금융중개서비스 금액 업데이트 (수출입 0.46억/팩토링 0.56억/네트워크론 3.02억)", "before": "", "after": "b94850f", "author": "techfinra"}, {"sha": "58a72d7", "ts": "2026-08-03 21:25:27", "type": "배포", "field": "fix: SO 목표매출 박경민 4억, 육태우 3.5억 설정", "before": "", "after": "58a72d7", "author": "techfinra"}, {"sha": "e19ecff", "ts": "2026-08-03 09:44:19", "type": "배포", "field": "feat: 주요활동 RM/SO표기+날짜순정렬, 업무진행현황 박선정 제거, 진행예정 정렬", "before": "", "after": "e19ecff", "author": "techfinra"}, {"sha": "0322659", "ts": "2026-08-03 09:40:10", "type": "배포", "field": "feat: SO 목록에서 박선정 제거 (RM으로 이동)", "before": "", "after": "0322659", "author": "techfinra"}, {"sha": "399d114", "ts": "2026-08-03 09:39:19", "type": "배포", "field": "feat: RM 인사이동 반영 - 전힘찬 RM 제외, 박선정 RM 추가 (목표 4억, 전힘찬 자리)", "before": "", "after": "399d114", "author": "techfinra"}, {"sha": "7aabd69", "ts": "2026-08-03 09:03:23", "type": "배포", "field": "fix: 주간보고 신규업체 RM/SO 둘 다 표시", "before": "", "after": "7aabd69", "author": "techfinra"}, {"sha": "d6673c8", "ts": "2026-07-31 13:38:20", "type": "배포", "field": "feat: 중진공창업지원처 7~12월 분할인식 자동 계산 (월별 자동 반영)", "before": "", "after": "d6673c8", "author": "techfinra"}, {"sha": "29f01c9", "ts": "2026-07-31 13:35:02", "type": "배포", "field": "fix: 중진공창업지원처 7월 인식금액 0원, 계약금액 500만원 (8월부터 월 833,333원 인식)", "before": "", "after": "29f01c9", "author": "techfinra"}, {"sha": "0f22906", "ts": "2026-07-31 13:34:02", "type": "배포", "field": "fix: 중진공창업지원처 계약금액 500만원, 7~12월 6개월 분할인식 (월 833,333원)", "before": "", "after": "0f22906", "author": "techfinra"}, {"sha": "9e54f94", "ts": "2026-07-31 11:06:05", "type": "배포", "field": "fix: weekKey 기준 화요일 14시 이후로 변경 - 주간보고 후 스냅샷 찍히도록", "before": "", "after": "9e54f94", "author": "techfinra"}, {"sha": "65f9571", "ts": "2026-07-31 10:57:27", "type": "배포", "field": "fix: weeklyBase localStorage 읽기 차단 - Firebase에서만 로드하여 모든 기기 동일", "before": "", "after": "65f9571", "author": "techfinra"}, {"sha": "f4a96b6", "ts": "2026-07-31 10:51:42", "type": "배포", "field": "fix: weeklyBase Firebase 양방향 동기화 - 리셋 시 모든 기기 반영", "before": "", "after": "f4a96b6", "author": "techfinra"}, {"sha": "f8f03f3", "ts": "2026-07-31 10:47:02", "type": "배포", "field": "fix: 복구 코드 완전 제거 - 리셋 정상 작동, Firebase weeklyBase 수신 차단 유지", "before": "", "after": "f8f03f3", "author": "techfinra"}, {"sha": "15f4592", "ts": "2026-07-31 10:39:19", "type": "배포", "field": "fix: loadDB 전 localStorage weeklyBase 강제 덮어쓰기 - 모든 기기 동기화", "before": "", "after": "15f4592", "author": "techfinra"}, {"sha": "bca93b1", "ts": "2026-07-31 10:36:26", "type": "배포", "field": "fix: Firebase에서 weeklyBase 수신 완전 차단 - 코드 주입 스냅샷만 사용", "before": "", "after": "bca93b1", "author": "techfinra"}, {"sha": "3bca233", "ts": "2026-07-31 10:29:25", "type": "배포", "field": "fix: 복구 스냅샷 Firebase 강제 저장 - 모든 기기 동기화", "before": "", "after": "3bca233", "author": "techfinra"}, {"sha": "5fa307a", "ts": "2026-07-31 10:27:45", "type": "배포", "field": "fix: Firebase weeklyBase 수신 시 현재 스냅샷 있으면 무조건 유지 - 모바일 덮어쓰기 방지", "before": "", "after": "5fa307a", "author": "techfinra"}, {"sha": "7870534", "ts": "2026-07-31 10:17:37", "type": "배포", "field": "fix: Firebase weeklyBase 수신 시 코드 주입 스냅샷(2026-07-30) 보호 - 모바일/다른PC 동일하게", "before": "", "after": "7870534", "author": "techfinra"}, {"sha": "8cf2f6d", "ts": "2026-07-31 09:29:54", "type": "배포", "field": "fix: 추출탭 주간보고 파이프라인 변동 - detailModal과 동일한 조합키 비교로 통일", "before": "", "after": "8cf2f6d", "author": "techfinra"}, {"sha": "245fecd", "ts": "2026-07-31 09:26:54", "type": "배포", "field": "fix: getFirstActivityDate 전역 함수로 이동 - 팝업 안뜨는 버그 수정", "before": "", "after": "245fecd", "author": "techfinra"}, {"sha": "f88acb4", "ts": "2026-07-31 09:24:51", "type": "배포", "field": "feat: 신규업체 로직 개선 - 스냅샷 없거나 진행현황 첫날짜 이번주면 신규 인식", "before": "", "after": "f88acb4", "author": "techfinra"}, {"sha": "0ef1868", "ts": "2026-07-31 09:14:41", "type": "배포", "field": "fix: 스냅샷 직접 주입 - 신규6개(캐피탈사)+단계변동2건만 정확히 반영", "before": "", "after": "0ef1868", "author": "techfinra"}, {"sha": "5f29fba", "ts": "2026-07-31 09:11:18", "type": "배포", "field": "fix: 0728 스냅샷 코드 직접 주입 - 신규6개/단계변동2건 복구", "before": "", "after": "5f29fba", "author": "techfinra"}, {"sha": "20f1142", "ts": "2026-07-31 08:58:49", "type": "배포", "field": "fix: init 시 스냅샷 업체명 공백 정규화 - KVCA 신규 오탐 리셋 없이 수정", "before": "", "after": "20f1142", "author": "techfinra"}];
+  const GH_COMMITS=[{"sha": "bcb57ab", "ts": "2026-08-14 11:44:48", "type": "배포", "field": "feat: 주간보고 주요활동 타겟제품 표시 추가", "before": "", "after": "bcb57ab", "author": "techfinra"}, {"sha": "3e27694", "ts": "2026-08-14 11:36:11", "type": "배포", "field": "fix: 이번주 Sales활동/방문미팅 팝업 RM/SO KNOWN_RM_SO_MAP 실시간 적용", "before": "", "after": "3e27694", "author": "techfinra"}, {"sha": "86815cc", "ts": "2026-08-14 11:33:56", "type": "배포", "field": "fix: actList/visitList 렌더링 시 KNOWN_RM_SO_MAP으로 RM/SO 실시간 적용", "before": "", "after": "86815cc", "author": "techfinra"}, {"sha": "4eac667", "ts": "2026-08-14 11:27:19", "type": "배포", "field": "fix: getEffectiveCompanies KNOWN_RM_SO_MAP 항상 강제 적용 - Firebase DB 값 무시", "before": "", "after": "4eac667", "author": "techfinra"}, {"sha": "9e5f19c", "ts": "2026-08-14 11:26:04", "type": "배포", "field": "fix: 워드 파싱 RM/SO 우선 적용 - _srcRM/_srcSO 저장 후 applyRMSOMap에서 우선 사용", "before": "", "after": "9e5f19c", "author": "techfinra"}, {"sha": "ada836d", "ts": "2026-08-14 11:23:29", "type": "배포", "field": "fix: 애큐온저축은행/캐피탈 KNOWN_RM_SO_MAP 김종환으로 수정", "before": "", "after": "ada836d", "author": "techfinra"}, {"sha": "02e4a00", "ts": "2026-08-14 10:57:02", "type": "배포", "field": "fix: applyRMSOMap 워드 파일 RM/SO 우선 적용 - KNOWN_RM_SO_MAP은 보조 역할", "before": "", "after": "02e4a00", "author": "techfinra"}, {"sha": "7772720", "ts": "2026-08-11 09:10:43", "type": "배포", "field": "fix: getCF에서 중진공창업지원처/PACM 직접 반환 - 모든 경로 차단", "before": "", "after": "7772720", "author": "techfinra"}, {"sha": "ab03c32", "ts": "2026-08-11 09:08:16", "type": "배포", "field": "fix: Firebase 수신 시점에도 중진공창업지원처/PACM 강제 패치 - 모든 경로 차단", "before": "", "after": "ab03c32", "author": "techfinra"}, {"sha": "834b838", "ts": "2026-08-11 09:05:57", "type": "배포", "field": "fix: getCFAdminData 중진공창업지원처 월100만/PACM 월30만 분할인식 하드코딩", "before": "", "after": "834b838", "author": "techfinra"}, {"sha": "db4677a", "ts": "2026-08-11 09:00:56", "type": "배포", "field": "fix: 중진공창업지원처 COMPANY_FINANCIALS 키 기업DB조회로 수정 + cfAdmin 패치 타겟제품 매칭", "before": "", "after": "db4677a", "author": "techfinra"}, {"sha": "d60cc6a", "ts": "2026-08-11 08:55:57", "type": "배포", "field": "fix: cfAdmin 패치 업체명만으로 찾기 - 중진공창업지원처/PACM 계약금액 정확히 반영", "before": "", "after": "d60cc6a", "author": "techfinra"}, {"sha": "d10ae38", "ts": "2026-08-11 08:50:50", "type": "배포", "field": "fix: cfAdmin 중진공창업지원처(500만)/PACM(561만) 계약금액 강제 패치", "before": "", "after": "d10ae38", "author": "techfinra"}, {"sha": "68eca4c", "ts": "2026-08-11 08:45:21", "type": "배포", "field": "fix: 중진공창업지원처 월100만/PACM 월30만 분할인식 설정", "before": "", "after": "68eca4c", "author": "techfinra"}, {"sha": "d988697", "ts": "2026-08-11 08:37:48", "type": "배포", "field": "fix: 신규업체 신한은행(크레디뷰) → 신한은행(기업여신심사부) 표시", "before": "", "after": "d988697", "author": "techfinra"}, {"sha": "6cc0e69", "ts": "2026-08-10 11:53:46", "type": "배포", "field": "fix: 크레디뷰 286,055,000원 + 금융중개 팩토링 0.58억/네트워크론 3.03억 업데이트", "before": "", "after": "6cc0e69", "author": "techfinra"}, {"sha": "0cf6113", "ts": "2026-08-06 14:42:51", "type": "배포", "field": "fix: SO 박경민/육태우 목표매출 각 14.725억 (29.45억 절반)", "before": "", "after": "0cf6113", "author": "techfinra"}, {"sha": "f5d7ec4", "ts": "2026-08-04 09:22:30", "type": "배포", "field": "fix: 인천상공회의소 SO 미정 (빈값 처리)", "before": "", "after": "f5d7ec4", "author": "techfinra"}, {"sha": "893ca32", "ts": "2026-08-04 09:21:48", "type": "배포", "field": "fix: KNOWN_RM_SO_MAP 인천상공회의소 추가 (RM:전힘찬, SO:박경민)", "before": "", "after": "893ca32", "author": "techfinra"}, {"sha": "ddde94d", "ts": "2026-08-03 22:26:11", "type": "배포", "field": "fix: 추출 진행예정 동일 제목 중복 제거 - 가장 가까운 날짜 1건만 표시", "before": "", "after": "ddde94d", "author": "techfinra"}, {"sha": "213646f", "ts": "2026-08-03 22:16:57", "type": "배포", "field": "feat: 추출 RM 업무진행현황 SO 동일 디자인 적용 + 박선정 RM/SO 모두 인식", "before": "", "after": "213646f", "author": "techfinra"}, {"sha": "c3ab44e", "ts": "2026-08-03 22:04:38", "type": "배포", "field": "fix: 달성매출 표시 전체 소수 셋째자리 반올림으로 통일", "before": "", "after": "c3ab44e", "author": "techfinra"}, {"sha": "601b7f0", "ts": "2026-08-03 22:00:47", "type": "배포", "field": "fix: RM Sales 카드 합계 fmtFloorEok 반올림 적용", "before": "", "after": "601b7f0", "author": "techfinra"}, {"sha": "88beca5", "ts": "2026-08-03 21:57:31", "type": "배포", "field": "fix: RM Sales 합계 표시 fmtFloorEok 반올림으로 변경", "before": "", "after": "88beca5", "author": "techfinra"}, {"sha": "9e21a3f", "ts": "2026-08-03 21:54:24", "type": "배포", "field": "fix: fmtFloorEok 버림→반올림 변경 (소수 셋째자리 반올림)", "before": "", "after": "9e21a3f", "author": "techfinra"}, {"sha": "0c27a3f", "ts": "2026-08-03 21:46:45", "type": "배포", "field": "feat: 추출탭 업무진행현황(RM) 추가 - 이창희/김종환/한영관/박선정 카드", "before": "", "after": "0c27a3f", "author": "techfinra"}, {"sha": "7d40d3e", "ts": "2026-08-03 21:37:16", "type": "배포", "field": "feat: 추출 바로가기 고객솔루션 주간보고 링크 추가", "before": "", "after": "7d40d3e", "author": "techfinra"}, {"sha": "b94850f", "ts": "2026-08-03 21:30:06", "type": "배포", "field": "fix: 크레디뷰 274,790,000원 + 금융중개서비스 금액 업데이트 (수출입 0.46억/팩토링 0.56억/네트워크론 3.02억)", "before": "", "after": "b94850f", "author": "techfinra"}, {"sha": "58a72d7", "ts": "2026-08-03 21:25:27", "type": "배포", "field": "fix: SO 목표매출 박경민 4억, 육태우 3.5억 설정", "before": "", "after": "58a72d7", "author": "techfinra"}, {"sha": "e19ecff", "ts": "2026-08-03 09:44:19", "type": "배포", "field": "feat: 주요활동 RM/SO표기+날짜순정렬, 업무진행현황 박선정 제거, 진행예정 정렬", "before": "", "after": "e19ecff", "author": "techfinra"}, {"sha": "0322659", "ts": "2026-08-03 09:40:10", "type": "배포", "field": "feat: SO 목록에서 박선정 제거 (RM으로 이동)", "before": "", "after": "0322659", "author": "techfinra"}, {"sha": "399d114", "ts": "2026-08-03 09:39:19", "type": "배포", "field": "feat: RM 인사이동 반영 - 전힘찬 RM 제외, 박선정 RM 추가 (목표 4억, 전힘찬 자리)", "before": "", "after": "399d114", "author": "techfinra"}, {"sha": "7aabd69", "ts": "2026-08-03 09:03:23", "type": "배포", "field": "fix: 주간보고 신규업체 RM/SO 둘 다 표시", "before": "", "after": "7aabd69", "author": "techfinra"}, {"sha": "d6673c8", "ts": "2026-07-31 13:38:20", "type": "배포", "field": "feat: 중진공창업지원처 7~12월 분할인식 자동 계산 (월별 자동 반영)", "before": "", "after": "d6673c8", "author": "techfinra"}, {"sha": "29f01c9", "ts": "2026-07-31 13:35:02", "type": "배포", "field": "fix: 중진공창업지원처 7월 인식금액 0원, 계약금액 500만원 (8월부터 월 833,333원 인식)", "before": "", "after": "29f01c9", "author": "techfinra"}, {"sha": "0f22906", "ts": "2026-07-31 13:34:02", "type": "배포", "field": "fix: 중진공창업지원처 계약금액 500만원, 7~12월 6개월 분할인식 (월 833,333원)", "before": "", "after": "0f22906", "author": "techfinra"}, {"sha": "9e54f94", "ts": "2026-07-31 11:06:05", "type": "배포", "field": "fix: weekKey 기준 화요일 14시 이후로 변경 - 주간보고 후 스냅샷 찍히도록", "before": "", "after": "9e54f94", "author": "techfinra"}, {"sha": "65f9571", "ts": "2026-07-31 10:57:27", "type": "배포", "field": "fix: weeklyBase localStorage 읽기 차단 - Firebase에서만 로드하여 모든 기기 동일", "before": "", "after": "65f9571", "author": "techfinra"}, {"sha": "f4a96b6", "ts": "2026-07-31 10:51:42", "type": "배포", "field": "fix: weeklyBase Firebase 양방향 동기화 - 리셋 시 모든 기기 반영", "before": "", "after": "f4a96b6", "author": "techfinra"}, {"sha": "f8f03f3", "ts": "2026-07-31 10:47:02", "type": "배포", "field": "fix: 복구 코드 완전 제거 - 리셋 정상 작동, Firebase weeklyBase 수신 차단 유지", "before": "", "after": "f8f03f3", "author": "techfinra"}, {"sha": "15f4592", "ts": "2026-07-31 10:39:19", "type": "배포", "field": "fix: loadDB 전 localStorage weeklyBase 강제 덮어쓰기 - 모든 기기 동기화", "before": "", "after": "15f4592", "author": "techfinra"}, {"sha": "bca93b1", "ts": "2026-07-31 10:36:26", "type": "배포", "field": "fix: Firebase에서 weeklyBase 수신 완전 차단 - 코드 주입 스냅샷만 사용", "before": "", "after": "bca93b1", "author": "techfinra"}, {"sha": "3bca233", "ts": "2026-07-31 10:29:25", "type": "배포", "field": "fix: 복구 스냅샷 Firebase 강제 저장 - 모든 기기 동기화", "before": "", "after": "3bca233", "author": "techfinra"}, {"sha": "5fa307a", "ts": "2026-07-31 10:27:45", "type": "배포", "field": "fix: Firebase weeklyBase 수신 시 현재 스냅샷 있으면 무조건 유지 - 모바일 덮어쓰기 방지", "before": "", "after": "5fa307a", "author": "techfinra"}, {"sha": "7870534", "ts": "2026-07-31 10:17:37", "type": "배포", "field": "fix: Firebase weeklyBase 수신 시 코드 주입 스냅샷(2026-07-30) 보호 - 모바일/다른PC 동일하게", "before": "", "after": "7870534", "author": "techfinra"}, {"sha": "8cf2f6d", "ts": "2026-07-31 09:29:54", "type": "배포", "field": "fix: 추출탭 주간보고 파이프라인 변동 - detailModal과 동일한 조합키 비교로 통일", "before": "", "after": "8cf2f6d", "author": "techfinra"}, {"sha": "245fecd", "ts": "2026-07-31 09:26:54", "type": "배포", "field": "fix: getFirstActivityDate 전역 함수로 이동 - 팝업 안뜨는 버그 수정", "before": "", "after": "245fecd", "author": "techfinra"}, {"sha": "f88acb4", "ts": "2026-07-31 09:24:51", "type": "배포", "field": "feat: 신규업체 로직 개선 - 스냅샷 없거나 진행현황 첫날짜 이번주면 신규 인식", "before": "", "after": "f88acb4", "author": "techfinra"}, {"sha": "0ef1868", "ts": "2026-07-31 09:14:41", "type": "배포", "field": "fix: 스냅샷 직접 주입 - 신규6개(캐피탈사)+단계변동2건만 정확히 반영", "before": "", "after": "0ef1868", "author": "techfinra"}, {"sha": "5f29fba", "ts": "2026-07-31 09:11:18", "type": "배포", "field": "fix: 0728 스냅샷 코드 직접 주입 - 신규6개/단계변동2건 복구", "before": "", "after": "5f29fba", "author": "techfinra"}];
   try{
     let logs=[];
     try{ logs=JSON.parse(localStorage.getItem(CHANGE_LOG_KEY)||'[]'); }catch(e){}
