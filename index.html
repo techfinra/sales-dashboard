@@ -404,14 +404,45 @@ body{font-family:'Noto Sans KR','Outfit',sans-serif;background:var(--bg0);color:
     }
     return L.join('\n');
   }
+  function formulaFor(td){
+    var sched=td.getAttribute('data-insik-sched');
+    if(sched&&typeof buildSplitSchedFormula==='function') return buildSplitSchedFormula(sched);
+    var amt=parseFloat(td.getAttribute('data-insik-amt'))||0;
+    var timing=td.getAttribute('data-insik-timing')||'';
+    return buildFormula(amt,timing);
+  }
+  function placePop(pop,td){
+    pop.style.display='block';
+    var rect=td.getBoundingClientRect();
+    pop.style.left='0px';pop.style.top='0px';
+    var pw=pop.offsetWidth||220,ph=pop.offsetHeight||130;
+    var lx=rect.left+rect.width/2-pw/2;
+    var ty=rect.top-ph-8;
+    lx=Math.max(8,Math.min(lx,window.innerWidth-pw-8));
+    if(ty<8)ty=rect.bottom+8;
+    pop.style.left=lx+'px';pop.style.top=ty+'px';
+  }
+  // 분할인식 스케줄 셀: 마우스 호버 시 표시
+  document.addEventListener('mouseover',function(e){
+    var pop=document.getElementById('insikFormulaPopup');
+    var td=e.target.closest&&e.target.closest('[data-insik-sched]');
+    if(!pop||!td)return;
+    pop.textContent=formulaFor(td);
+    placePop(pop,td);
+  });
+  document.addEventListener('mouseout',function(e){
+    var pop=document.getElementById('insikFormulaPopup');
+    var td=e.target.closest&&e.target.closest('[data-insik-sched]');
+    if(!pop||!td)return;
+    if(e.relatedTarget&&td.contains(e.relatedTarget))return;
+    pop.style.display='none';
+  });
   document.addEventListener('click',function(e){
     var pop=document.getElementById('insikFormulaPopup');
     if(!pop)return;
     var td=e.target.closest('[data-insik-amt]');
     if(!td){pop.style.display='none';return;}
-    var amt=parseFloat(td.getAttribute('data-insik-amt'))||0;
-    var timing=td.getAttribute('data-insik-timing')||'';
-    pop.textContent=buildFormula(amt,timing);
+    pop.textContent=formulaFor(td);
     pop.style.display='block';
     // position:fixed - viewport 좌표
     var rect=td.getBoundingClientRect();
@@ -3184,6 +3215,9 @@ function renderKPIs(){
     const hcf=getHCF(co);
     const cf=hcf||getCF(co);
     if(!cf) continue;
+    // 연도 걸침 분할인식: 올해 귀속분만
+    const _ssA=getSplitSched(co);
+    if(_ssA){ annualRev+=splitInsikInYear(_ssA,new Date().getFullYear()); continue; }
     // HC는 연간예상 = 현재 인식금액 그대로
     if(hcf){ annualRev+=(hcf.인식금액||0); continue; }
     const plan=getPlanAmt(co)||cf.계획금액||0;
@@ -4173,15 +4207,16 @@ function openKpiDetail(type){
             return Math.round(a*Math.max(0,12-mm+1)/12);
           }
           // HC(금융중개서비스)는 연간예상 = 현재 인식금액
-          const annualAmt=co._isHC ? (p.amount||0) : _calcAnnualRow(plan,_timing);
+          const _ssR=getSplitSched(co);
+          const annualAmt=co._isHC ? (p.amount||0) : _ssR ? splitInsikInYear(_ssR,new Date().getFullYear()) : _calcAnnualRow(plan,_timing);
           return `
           <tr style="border-bottom:1px solid var(--border)">
             <td style="padding:8px 10px">${coNameHtml(co)}</td>
             <td style="padding:8px 10px;color:var(--t1)">${esc(co.RM||'—')}</td>
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.SO||'—')}</td>
             <td style="padding:8px 10px;color:var(--t2)">${esc(co.계약목표||'—')}</td>
-            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--a2)">${plan>0?(plan>=1e6?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
-            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${_timing}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--a2)">${plan>0?((plan>=1e6&&!getSplitSched(co))?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
+            <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" ${insikSchedAttr(co)} data-insik-timing="${_timing}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
             <td style="padding:8px 10px;text-align:right;font-family:'Outfit',sans-serif;font-weight:700;color:#f59e0b">${annualAmt>=1e6?fmtFloorEok(annualAmt):annualAmt>0?fmtAmt(annualAmt):'—'}</td>
           </tr>`;}).join('');
         return `
@@ -4215,6 +4250,8 @@ function openKpiDetail(type){
                 const _insikSum=g.items.reduce((s,{p})=>s+(p.amount||0),0);
                 const _annualSum=g.items.reduce((s,{co,p})=>{
                   if(co._isMass||co._isHC) return s+(p.amount||0);
+                  const _ssS=getSplitSched(co);
+                  if(_ssS) return s+splitInsikInYear(_ssS,new Date().getFullYear());
                   const _cf=getCF(co)||getHCF(co);
                   const _t=_cf?_cf.계약목표||'':'';
                   const _p=getPlanAmt(co)||0;
@@ -4321,8 +4358,8 @@ function openKpiDetail(type){
           <td style="padding:8px;color:var(--t2)">${esc(co.타겟제품)}</td>
           <td style="padding:8px;color:var(--t1)">${esc(co.RM)}</td>
           <td style="padding:8px;color:var(--t2)">${esc(kt)}</td>
-          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?(plan>=1e6?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
-          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
+          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?((plan>=1e6&&!getSplitSched(co))?fmtFloorEok(plan):fmtAmt(plan)):'—'}</td>
+          <td style="padding:8px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" ${insikSchedAttr(co)} data-insik-timing="${(cf&&cf.계약목표)||''}">${(p.amount||0)>=1e6?fmtFloorEok(p.amount||0):fmtAmt(p.amount||0)}</td>
         </tr>`;
       }).join('');
     }
@@ -4454,7 +4491,7 @@ function openPkgDetail(){
         <td style="padding:7px;font-size:12px;color:var(--t1)">${esc(co.RM||'—')}</td>
         <td style="padding:7px;font-size:12px;color:var(--t2)">${esc(co.SO||'—')}</td>
         <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--a2);font-size:12px">${plan>0?fmtFloorEok(plan):'—'}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--success);font-size:12px;cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit;font-weight:700;color:var(--success);font-size:12px;cursor:pointer" data-insik-amt="${plan}" ${insikSchedAttr(co)} data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
       </tr>`;
     }).join('');
   }
@@ -4535,7 +4572,7 @@ function openSvcDetail(svcKey){
         <td style="padding:7px;color:var(--t1)">${esc(co.RM||'—')}</td>
         <td style="padding:7px;color:var(--t2)">${esc(co.SO||'—')}</td>
         <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--a2)">${plan>0?fmtFloorEok(plan):'—'}</td>
-        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
+        <td style="padding:7px;text-align:right;font-family:Outfit,sans-serif;font-weight:700;color:var(--success);cursor:pointer" data-insik-amt="${plan}" ${insikSchedAttr(co)} data-insik-timing="${(cf&&cf.계약목표)||''}">${fmtFloorEok(p.amount||0)}</td>
       </tr>`;
     }).join('');
   }
@@ -7431,6 +7468,58 @@ function timingToMonth(t){
 //   특정 월, m < curM    → amt × (curM-m)/12    계약월부터 경과월 인식
 //   특정 월, m >= curM   → 0                    미계약 = 미인식
 //   2027년               → 0                    미래 파이프라인 = 미인식
+// ── 연도 걸침 분할인식 스케줄 ──
+// 규칙: 시작월분은 다음달에 인식(시작월 당월 미인식) → 경과개월 × 월인식액 누적
+function getSplitSchedules(){
+  return [
+    {key:'태이경영연구원',
+     match:co=>(co.업체명||'').replace(/\s/g,'').includes('태이경영연구원'),
+     총액:1800000, 월인식액:200000, 시작년:2027, 시작월:1, 개월수:9,
+     계약목표:'10월', 무상기간:'2026년 10~12월'}
+  ];
+}
+function getSplitSched(co){
+  if(!co) return null;
+  for(const s of getSplitSchedules()){ if(s.match(co)) return s; }
+  return null;
+}
+function getSplitSchedByKey(k){ return getSplitSchedules().find(s=>s.key===k)||null; }
+// 현재 시점 누적 인식금액
+function splitInsikNow(s,now){
+  now=now||new Date();
+  const el=(now.getFullYear()-s.시작년)*12+(now.getMonth()+1-s.시작월);
+  return el>0?Math.min(el,s.개월수)*s.월인식액:0;
+}
+// 해당 연도 귀속 인식금액 (연간예상용, 월 귀속 기준)
+function splitInsikInYear(s,year){
+  let sum=0;
+  for(let i=0;i<s.개월수;i++){ if(s.시작년+Math.floor((s.시작월-1+i)/12)===year) sum+=s.월인식액; }
+  return Math.min(sum,s.총액);
+}
+function insikSchedAttr(co){ const s=getSplitSched(co); return s?`data-insik-sched="${s.key}"`:''; }
+// 인식금액 툴팁 문구
+function buildSplitSchedFormula(key){
+  const s=getSplitSchedByKey(key); if(!s) return '';
+  const fM=v=>v>=1e8?(v/1e8).toFixed(2)+'억원':(v/1e4).toLocaleString()+'만원';
+  const now=new Date(), cy=now.getFullYear(), cm=now.getMonth()+1;
+  const ym=(i)=>{const t=s.시작월-1+i; return {y:s.시작년+Math.floor(t/12), m:t%12+1};};
+  const st=ym(0), ed=ym(s.개월수-1), first=ym(1), done=ym(s.개월수);
+  const yy=y=>String(y).slice(2);
+  const insik=splitInsikNow(s,now);
+  const L=[];
+  L.push('계약금액: '+fM(s.총액));
+  L.push('무상기간: '+s.무상기간+' (인식 없음)');
+  L.push('분할인식: '+yy(st.y)+'년 '+st.m+'월~'+(ed.y!==st.y?yy(ed.y)+'년 ':'')+ed.m+'월 월 '+fM(s.월인식액)+' ('+s.개월수+'개월)');
+  L.push('─────────────────────');
+  L.push('※ 해당월분은 다음달에 인식');
+  L.push(yy(st.y)+'년 '+st.m+'월분 → '+yy(first.y)+'년 '+first.m+'월 첫 '+fM(s.월인식액)+' 인식');
+  L.push(yy(first.y)+'년 '+first.m+'월부터 매월 '+fM(s.월인식액)+'씩 누적');
+  L.push(yy(done.y)+'년 '+done.m+'월 '+fM(s.총액)+' 인식 완료');
+  L.push('─────────────────────');
+  L.push('현재('+yy(cy)+'년 '+cm+'월) 인식금액 = '+(insik?fM(insik):'0원'));
+  return L.join('\n');
+}
+
 function calcInsik(amt, timing){
   if(!amt) return 0;
   const t=String(timing||'').trim();
@@ -7588,6 +7677,9 @@ function getCF(co){
 
   // ── 하드코딩 분할인식 업체 ──
   const _curM=new Date().getMonth()+1;
+  // 연도 걸침 분할인식 (태이경영연구원 등)
+  const _ss=getSplitSched(co);
+  if(_ss) return {계획금액:_ss.총액,인식금액:splitInsikNow(_ss),금액구분:'confirmed',계약목표:_ss.계약목표,계약가능성:'계약완료',견적여부:'Y',현황:'계약완료'};
   if(name==='중진공창업지원처'&&prod.includes('기업DB조회')){
     const _el=_curM-7;
     return {계획금액:5000000,인식금액:_el>0?Math.min(_el*1000000,5000000):0,금액구분:'confirmed',계약목표:'7월',계약가능성:'계약완료',견적여부:'Y',현황:'계약완료'};
