@@ -5047,7 +5047,7 @@ function renderExtractTab(mode){
 // ── 업무진행현황(RM) ──
 function renderExtractRM(wr, nextStart){
   const cos = getEffectiveCompanies();
-  const schedules = getScheduleData().filter(s=>s.cal.includes('영업추진')&&!['D-CLOUD운영본부 당직자','연차예정','당직자','연차','당직(야간)','당직(주간)','당직'].some(ex=>(s.title||'').includes(ex)));
+  const schedules = getScheduleData().filter(s=>s.cal.includes('영업추진')&&!['D-CLOUD운영본부 당직자','연차예정','당직자','연차','당직(야간)','당직(주간)','당직','D-CLOUD센터 관제근무자','관제근무','관제 근무'].some(ex=>(s.title||'').includes(ex)));
   const el = document.getElementById('extractContent');
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
   const thisWeekLabel = `이번주 ${fmt(wr.thisStart)}(월)~${fmt(wr.thisEnd)}(금)`;
@@ -5164,7 +5164,7 @@ function renderExtractRM(wr, nextStart){
 // ── 업무진행현황(SO) ──
 function renderExtractWork(wr, nextStart){
   const cos = getEffectiveCompanies();
-  const schedules = getScheduleData().filter(s=>s.cal.includes('영업추진')&&!['D-CLOUD운영본부 당직자','연차예정','당직자','연차','당직(야간)','당직(주간)','당직'].some(ex=>(s.title||'').includes(ex)));
+  const schedules = getScheduleData().filter(s=>s.cal.includes('영업추진')&&!['D-CLOUD운영본부 당직자','연차예정','당직자','연차','당직(야간)','당직(주간)','당직','D-CLOUD센터 관제근무자','관제근무','관제 근무'].some(ex=>(s.title||'').includes(ex)));
   const el = document.getElementById('extractContent');
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
 
@@ -5405,7 +5405,7 @@ function renderExtractWeekly(wr){
 
   // ── 다음주 주요 일정 (일정 엑셀 기반) ──
   const schedules = getScheduleData();
-  const SCHED_EXCLUDE = ['D-CLOUD운영본부 당직자', '연차예정', '당직자', '연차', '당직(야간)', '당직(주간)', '당직'];
+  const SCHED_EXCLUDE = ['D-CLOUD운영본부 당직자', '연차예정', '당직자', '연차', '당직(야간)', '당직(주간)', '당직', 'D-CLOUD센터 관제근무자', '관제근무', '관제 근무'];
   const nextScheds = schedules.filter(s=>{
     const dt = new Date(s.start.substring(0,10));
     if(dt < nextStart || dt > nextEnd) return false;
